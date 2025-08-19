@@ -18,6 +18,7 @@ import {
   SearchFilters,
   DataProviderResponse 
 } from '@/types/election';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface InecProviderConfig extends DataProviderConfig {
   inecApiKey?: string;
@@ -46,9 +47,39 @@ export class InecProvider extends BaseDataProvider {
     await this.rateLimit();
     
     return this.retryRequest(async () => {
-      if (this.inecConfig.fallbackMode === 'api' && this.inecConfig.inecBaseUrl) {
-        return this.fetchFromInecApi('/elections', filters);
-      } else {
+      try {
+        const { data, error } = await supabase
+          .from('elections')
+          .select('*')
+          .order('election_date', { ascending: false });
+
+        if (error) throw error;
+
+        const mappedData: Election[] = data.map(election => ({
+          id: election.id,
+          name: election.name,
+          type: election.type,
+          date: election.election_date,
+          status: election.status,
+          description: election.description || '',
+          location: {
+            state: election.states?.[0] || '',
+            lga: '',
+            ward: ''
+          }
+        }));
+
+        return {
+          data: mappedData,
+          meta: {
+            total: mappedData.length,
+            source: this.name,
+            version: this.version
+          },
+          success: true
+        };
+      } catch (error) {
+        console.warn('Supabase elections query failed, falling back to manual data:', error);
         return this.fetchFromManualData('elections', filters);
       }
     });
