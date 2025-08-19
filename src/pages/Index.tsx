@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
-import PersonalizedDashboard from "@/components/PersonalizedDashboard";
+import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -19,7 +19,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <PersonalizedDashboard />
+        <Hero />
       </main>
       <Footer />
     </div>
