@@ -86,9 +86,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Hero Image Section */}
-      <div className="hidden lg:flex lg:w-1/2 relative">
+      <div className="w-full lg:w-1/2 h-64 md:h-80 lg:min-h-screen relative flex-shrink-0">
         <FaceAwareHero
           imageSrc="/lovable-uploads/f61fa239-2dfa-4b39-b9d6-24db87c9b2b7.png"
           title="Strengthen Nigerian Democracy"
@@ -101,21 +101,13 @@ const Auth = () => {
           }}
           preferSide="left"
           enableFaceAware={true}
-          className="h-full"
+          className="h-full w-full"
         />
       </div>
 
       {/* Authentication Form Section */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-8 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile Hero */}
-          <div className="lg:hidden mb-8 text-center">
-            <div className="w-16 h-16 bg-gradient-hero rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl text-white">🗳️</span>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">CivicLens</h1>
-            <p className="text-muted-foreground">Empowering democratic participation</p>
-          </div>
 
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
