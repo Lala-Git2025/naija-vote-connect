@@ -3,8 +3,7 @@
 
 import { 
   BaseDataProvider, 
-  DataProviderConfig,
-  DataProviderResponse 
+  DataProviderConfig
 } from '@/services/data-provider';
 import { 
   Election, 
@@ -16,7 +15,8 @@ import {
   ElectionResult, 
   NewsItem, 
   FactCheck,
-  SearchFilters 
+  SearchFilters,
+  DataProviderResponse 
 } from '@/types/election';
 
 export interface InecProviderConfig extends DataProviderConfig {
