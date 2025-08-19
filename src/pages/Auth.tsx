@@ -91,26 +91,34 @@ const Auth = () => {
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: `url('/lovable-uploads/f61fa239-2dfa-4b39-b9d6-24db87c9b2b7.png')`
+            backgroundImage: `url('/lovable-uploads/f61fa239-2dfa-4b39-b9d6-24db87c9b2b7.png')`,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            backgroundBlendMode: 'normal',
+            mixBlendMode: 'normal',
+            filter: 'none'
           }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-primary/60" />
-        </div>
-        <div className="relative z-10 flex flex-col justify-center p-12 text-white">
+        />
+        
+        {/* Local text scrim only behind content */}
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-black/35 via-black/15 to-transparent" />
+        
+        <div className="relative z-10 flex flex-col justify-center p-12">
           <div className="max-w-md">
-            <h1 className="text-4xl font-bold mb-6">
+            <h1 className="text-4xl font-bold mb-6 text-white" 
+                style={{ textShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               Strengthen Nigerian Democracy
             </h1>
-            <p className="text-lg leading-relaxed mb-8">
+            <p className="text-lg leading-relaxed mb-8 text-white/92">
               Join millions of Nigerians making informed voting decisions. CivicLens provides verified candidate information, election updates, and civic education to empower your democratic participation.
             </p>
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-white/82 backdrop-blur-[8px] rounded-full flex items-center justify-center">
                 <span className="text-2xl">🗳️</span>
               </div>
-              <div>
-                <p className="font-semibold">INEC Verified Data</p>
-                <p className="text-sm opacity-90">Official election information</p>
+              <div className="bg-white/82 backdrop-blur-[8px] rounded-lg px-3 py-2">
+                <p className="font-semibold text-gray-900">INEC Verified Data</p>
+                <p className="text-sm text-gray-700">Official election information</p>
               </div>
             </div>
           </div>
