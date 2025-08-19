@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import Admin from "./pages/Admin";
 import Candidates from "./pages/Candidates";
 import CandidateProfile from "./pages/CandidateProfile";
 import CandidateComparison from "./pages/CandidateComparison";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/candidate/:id" element={<CandidateProfile />} />
             <Route path="/candidates/compare" element={<CandidateComparison />} />

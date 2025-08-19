@@ -2,6 +2,43 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Election, Race, Candidate, Deadline, PollingUnit, NewsItem, FactCheck } from '@/types/election';
 
+// Type mapping functions to convert database types to frontend types
+const mapElectionType = (dbType: string): Election['type'] => {
+  const mapping: Record<string, Election['type']> = {
+    'presidential': 'Presidential',
+    'gubernatorial': 'Gubernatorial', 
+    'senatorial': 'Senate',
+    'house_of_representatives': 'House of Assembly',
+    'state_assembly': 'House of Assembly',
+    'local_government': 'Local Government',
+    'councilor': 'Local Government'
+  };
+  return mapping[dbType] || 'Presidential';
+};
+
+const mapElectionStatus = (dbStatus: string): Election['status'] => {
+  const mapping: Record<string, Election['status']> = {
+    'upcoming': 'upcoming',
+    'ongoing': 'ongoing', 
+    'completed': 'completed',
+    'cancelled': 'postponed',
+    'postponed': 'postponed'
+  };
+  return mapping[dbStatus] || 'upcoming';
+};
+
+const mapFactCheckVerdict = (dbVerdict: string): FactCheck['verdict'] => {
+  const mapping: Record<string, FactCheck['verdict']> = {
+    'true': 'True',
+    'mostly-true': 'Mostly True',
+    'partly-true': 'Half True',
+    'misleading': 'Mostly False',
+    'false': 'False',
+    'unverified': 'Unverified'
+  };
+  return mapping[dbVerdict] || 'Unverified';
+};
+
 export const SUPABASE_QUERY_KEYS = {
   ELECTIONS: 'supabase-elections',
   RACES: 'supabase-races', 
@@ -27,15 +64,10 @@ export function useSupabaseElections() {
       return data.map(election => ({
         id: election.id,
         name: election.name,
-        type: election.type,
+        type: mapElectionType(election.type),
         date: election.election_date,
-        status: election.status,
+        status: mapElectionStatus(election.status),
         description: election.description || '',
-        location: {
-          state: election.states?.[0] || '',
-          lga: '',
-          ward: ''
-        },
         sourceId: 'supabase',
         createdAt: election.created_at,
         updatedAt: election.updated_at
@@ -66,14 +98,16 @@ export function useSupabaseRaces(electionId?: string) {
         id: race.id,
         electionId: race.election_id,
         name: race.name,
-        type: race.type,
-        location: {
-          state: race.state || '',
-          lga: race.lga || '',
-          ward: race.ward || ''
-        },
-        constituency: race.constituency || '',
-        description: race.description || ''
+        office: race.name,
+        district: race.constituency || race.name,
+        state: race.state || '',
+        lga: race.lga,
+        ward: race.ward,
+        candidates: [],
+        pollingUnits: [],
+        sourceId: 'supabase',
+        createdAt: race.created_at,
+        updatedAt: race.updated_at
       })) as Race[];
     },
     staleTime: 5 * 60 * 1000,
@@ -99,16 +133,23 @@ export function useSupabaseCandidates(raceId?: string) {
 
       return data.map(candidate => ({
         id: candidate.id,
-        raceId: candidate.race_id,
         name: candidate.name,
         party: candidate.party,
-        age: candidate.age,
-        occupation: candidate.occupation || '',
-        education: candidate.education || '',
-        experience: candidate.experience || '',
-        manifesto: candidate.manifesto || '',
-        avatarUrl: candidate.avatar_url || '',
-        status: candidate.status
+        partyAbbreviation: candidate.party,
+        photo: candidate.avatar_url,
+        biography: candidate.manifesto,
+        experience: candidate.experience ? [candidate.experience] : [],
+        education: candidate.education ? [candidate.education] : [],
+        positions: [],
+        endorsements: [],
+        funding: [],
+        socialMedia: {},
+        verified: false,
+        inecVerified: true,
+        sourceId: 'supabase',
+        races: candidate.race_id ? [candidate.race_id] : [],
+        createdAt: candidate.created_at,
+        updatedAt: candidate.updated_at
       })) as Candidate[];
     },
     staleTime: 5 * 60 * 1000,
@@ -134,12 +175,15 @@ export function useSupabaseDeadlines(electionId?: string) {
 
       return data.map(deadline => ({
         id: deadline.id,
-        electionId: deadline.election_id,
         title: deadline.title,
-        description: deadline.description || '',
         date: deadline.deadline_date,
-        type: deadline.type,
-        priority: deadline.priority || 'medium'
+        type: deadline.type as Deadline['type'],
+        description: deadline.description || '',
+        electionId: deadline.election_id,
+        importance: deadline.priority as Deadline['importance'],
+        notificationSent: false,
+        sourceId: 'supabase',
+        createdAt: deadline.created_at
       })) as Deadline[];
     },
     staleTime: 5 * 60 * 1000,
@@ -171,18 +215,17 @@ export function useSupabasePollingUnits(state?: string, lga?: string) {
         id: pu.id,
         name: pu.name,
         code: pu.code,
-        location: {
-          state: pu.state,
-          lga: pu.lga,
-          ward: pu.ward
-        },
         address: pu.address || '',
-        coordinates: pu.latitude && pu.longitude ? {
-          lat: parseFloat(pu.latitude),
-          lng: parseFloat(pu.longitude)
-        } : undefined,
+        ward: pu.ward,
+        lga: pu.lga,
+        state: pu.state,
+        latitude: pu.latitude ? parseFloat(String(pu.latitude)) : undefined,
+        longitude: pu.longitude ? parseFloat(String(pu.longitude)) : undefined,
         registeredVoters: pu.registered_voters || 0,
-        inecId: pu.inec_pu_id || ''
+        accessibility: true,
+        sourceId: 'supabase',
+        createdAt: pu.created_at,
+        updatedAt: pu.updated_at
       })) as PollingUnit[];
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -205,14 +248,16 @@ export function useSupabaseNews(limit: number = 20) {
       return data.map(news => ({
         id: news.id,
         title: news.title,
-        content: news.content || '',
         summary: news.summary || '',
-        source: news.source_name,
-        sourceUrl: news.source_url || '',
+        content: news.content || '',
         publishedAt: news.published_at || '',
-        category: news.category || 'general',
+        url: news.source_url || '',
+        category: news.category as NewsItem['category'],
         tags: news.tags || [],
-        verified: news.is_verified || false
+        verified: news.is_verified || false,
+        sourceId: 'supabase',
+        createdAt: news.created_at,
+        updatedAt: news.updated_at
       })) as NewsItem[];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -240,15 +285,20 @@ export function useSupabaseFactChecks(candidateId?: string, limit: number = 20) 
 
       return data.map(factCheck => ({
         id: factCheck.id,
-        candidateId: factCheck.candidate_id,
         claim: factCheck.claim,
-        verdict: factCheck.verdict,
+        verdict: mapFactCheckVerdict(factCheck.verdict),
         explanation: factCheck.explanation || '',
-        source: factCheck.source_name,
-        sourceUrl: factCheck.source_url || '',
         topic: factCheck.topic || '',
-        confidenceScore: factCheck.confidence_score || 0.5,
-        publishedAt: factCheck.published_at || ''
+        candidateId: factCheck.candidate_id,
+        checkedAt: factCheck.published_at || '',
+        sourceUrl: factCheck.source_url || '',
+        organization: factCheck.source_name,
+        trustScore: factCheck.confidence_score || 0.5,
+        tags: [],
+        verified: true,
+        sourceId: 'supabase',
+        createdAt: factCheck.created_at,
+        updatedAt: factCheck.updated_at
       })) as FactCheck[];
     },
     staleTime: 5 * 60 * 1000,

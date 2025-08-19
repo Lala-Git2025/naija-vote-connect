@@ -58,15 +58,13 @@ export class InecProvider extends BaseDataProvider {
         const mappedData: Election[] = data.map(election => ({
           id: election.id,
           name: election.name,
-          type: election.type,
+          type: this.mapElectionType(election.type),
           date: election.election_date,
-          status: election.status,
+          status: this.mapElectionStatus(election.status),
           description: election.description || '',
-          location: {
-            state: election.states?.[0] || '',
-            lga: '',
-            ward: ''
-          }
+          sourceId: 'supabase',
+          createdAt: election.created_at,
+          updatedAt: election.updated_at
         }));
 
         return {
@@ -83,6 +81,30 @@ export class InecProvider extends BaseDataProvider {
         return this.fetchFromManualData('elections', filters);
       }
     });
+  }
+  
+  private mapElectionType(dbType: string): Election['type'] {
+    const mapping: Record<string, Election['type']> = {
+      'presidential': 'Presidential',
+      'gubernatorial': 'Gubernatorial', 
+      'senatorial': 'Senate',
+      'house_of_representatives': 'House of Assembly',
+      'state_assembly': 'House of Assembly',
+      'local_government': 'Local Government',
+      'councilor': 'Local Government'
+    };
+    return mapping[dbType] || 'Presidential';
+  }
+
+  private mapElectionStatus(dbStatus: string): Election['status'] {
+    const mapping: Record<string, Election['status']> = {
+      'upcoming': 'upcoming',
+      'ongoing': 'ongoing', 
+      'completed': 'completed',
+      'cancelled': 'postponed',
+      'postponed': 'postponed'
+    };
+    return mapping[dbStatus] || 'upcoming';
   }
   
   async getRaces(electionId?: string, filters?: SearchFilters): Promise<DataProviderResponse<Race>> {
