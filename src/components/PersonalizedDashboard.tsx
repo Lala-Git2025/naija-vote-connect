@@ -82,18 +82,26 @@ const PersonalizedDashboard = () => {
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: `url('/lovable-uploads/3d96de39-d837-4049-acb9-fe13c009ca8b.png')`
+            backgroundImage: `url('/lovable-uploads/3d96de39-d837-4049-acb9-fe13c009ca8b.png')`,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            backgroundBlendMode: 'normal',
+            mixBlendMode: 'normal',
+            filter: 'none'
           }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/70" />
-        </div>
+        />
+        
+        {/* Local text scrim only behind content */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/35" 
+             style={{ height: '45%', top: 'auto', bottom: 0 }} />
         
         <div className="relative z-10 container mx-auto px-4 h-full flex items-center">
-          <div className="max-w-2xl text-white">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white" 
+                style={{ textShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               Your Democratic Voice Matters
             </h1>
-            <p className="text-xl md:text-2xl mb-8 leading-relaxed">
+            <p className="text-xl md:text-2xl mb-8 leading-relaxed text-white/92">
               Stay informed, stay engaged. Track upcoming elections, compare candidates, and make informed decisions that shape Nigeria's future.
             </p>
             
@@ -101,7 +109,7 @@ const PersonalizedDashboard = () => {
               <Button 
                 size="lg" 
                 onClick={() => navigate('/candidates')}
-                className="bg-white text-primary hover:bg-white/90 font-semibold"
+                className="bg-white text-[#1E4D91] hover:bg-white/90 font-semibold"
               >
                 Explore Candidates
               </Button>
@@ -118,14 +126,14 @@ const PersonalizedDashboard = () => {
         </div>
         
         {/* Civic Engagement Stats */}
-        <div className="absolute bottom-6 right-6 bg-white/20 backdrop-blur-sm rounded-lg p-4 text-white">
+        <div className="absolute bottom-6 right-6 bg-white/82 backdrop-blur-[8px] rounded-lg p-4 text-gray-900">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#1E4D91]/10 rounded-full flex items-center justify-center">
               <span className="text-lg">🗳️</span>
             </div>
             <div>
               <p className="font-semibold">INEC Verified</p>
-              <p className="text-sm opacity-90">Official election data</p>
+              <p className="text-sm opacity-80">Official election data</p>
             </div>
           </div>
         </div>
