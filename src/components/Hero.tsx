@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Shield, Users, Calendar } from "lucide-react";
@@ -46,12 +47,16 @@ const Hero = () => {
 
           {/* Call to Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button variant="hero" size="lg" className="text-lg px-8 py-4">
-              Explore Candidates
-              <ArrowRight className="w-5 h-5" />
+            <Button variant="hero" size="lg" className="text-lg px-8 py-4" asChild>
+              <Link to="/candidates">
+                Explore Candidates
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </Button>
-            <Button variant="civic" size="lg" className="text-lg px-8 py-4 bg-background/10 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
-              Voting Guide
+            <Button variant="civic" size="lg" className="text-lg px-8 py-4 bg-background/10 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+              <Link to="/democracy-hub">
+                Voting Guide
+              </Link>
             </Button>
           </div>
 

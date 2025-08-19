@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -165,14 +166,20 @@ const PersonalizedDashboard = () => {
                   <Users className="w-5 h-5 mr-2 text-primary" />
                   Candidate Updates
                 </span>
-                <Button variant="ghost" size="sm">
-                  View All <ChevronRight className="w-4 h-4 ml-1" />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/candidates">
+                    View All <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {candidateHighlights.map((candidate, index) => (
-                <div key={index} className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                <Link 
+                  key={index} 
+                  to={`/candidate/${candidate.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                >
                   <div className="w-12 h-12 bg-gradient-card rounded-full flex items-center justify-center text-2xl">
                     {candidate.image}
                   </div>
@@ -185,7 +192,7 @@ const PersonalizedDashboard = () => {
                     <p className="text-sm text-primary">{candidate.recentUpdate}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </div>
+                </Link>
               ))}
             </CardContent>
           </Card>
@@ -255,17 +262,23 @@ const PersonalizedDashboard = () => {
               <CardTitle className="text-foreground">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                <MapPin className="w-4 h-4 mr-2" />
-                Find Polling Unit
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/democracy-hub">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Find Polling Unit
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Users className="w-4 h-4 mr-2" />
-                Compare Candidates
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/candidates/compare">
+                  <Users className="w-4 h-4 mr-2" />
+                  Compare Candidates
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="w-4 h-4 mr-2" />
-                View Full Calendar
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/calendar">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Full Calendar
+                </Link>
               </Button>
             </CardContent>
           </Card>
