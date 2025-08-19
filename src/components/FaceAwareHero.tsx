@@ -43,56 +43,25 @@ const FaceAwareHero = ({
 
   useEffect(() => {
     const loadModels = async () => {
+      if (!enableFaceAware) return;
+      
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        setModelsLoaded(true);
+        // For now, skip face detection to ensure component renders
+        // TODO: Add proper model files when needed
+        console.log('Face detection disabled - using default positioning');
+        setModelsLoaded(false);
       } catch (error) {
         console.warn('Face detection models failed to load, using fallback positioning:', error);
         setModelsLoaded(false);
       }
     };
 
-    if (enableFaceAware) {
-      loadModels();
-    }
+    loadModels();
   }, [enableFaceAware]);
 
   const detectFaces = async () => {
-    if (!modelsLoaded || !imageRef.current || !enableFaceAware) {
-      return;
-    }
-
-    try {
-      const detections = await faceapi.detectAllFaces(
-        imageRef.current,
-        new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
-      );
-
-      if (detections.length > 0) {
-        const imageRect = imageRef.current.getBoundingClientRect();
-        const leftThirdWidth = imageRect.width / 3;
-        
-        // Check if any faces are in the left third
-        const facesInLeftThird = detections.some(detection => {
-          const box = detection.box;
-          return box.x < leftThirdWidth;
-        });
-
-        if (facesInLeftThird) {
-          // Try top-left or bottom-left as alternatives
-          const facesInTopLeft = detections.some(detection => {
-            const box = detection.box;
-            return box.x < leftThirdWidth && box.y < imageRect.height / 2;
-          });
-
-          setTextPosition(facesInTopLeft ? "bottom-left" : "top-left");
-        } else {
-          setTextPosition(preferSide);
-        }
-      }
-    } catch (error) {
-      console.warn('Face detection failed, using fallback positioning:', error);
-    }
+    // Skip face detection for now - use fallback positioning
+    return;
   };
 
   const getTextPositionClasses = () => {
@@ -115,7 +84,6 @@ const FaceAwareHero = ({
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          ref={imageRef}
           src={imageSrc}
           alt="Hero background"
           className="w-full h-full object-cover object-center"
@@ -124,9 +92,7 @@ const FaceAwareHero = ({
             mixBlendMode: 'normal',
             filter: 'none'
           }}
-          onLoad={detectFaces}
         />
-        <canvas ref={canvasRef} className="hidden" />
       </div>
 
       {/* Content with Local Scrim */}
