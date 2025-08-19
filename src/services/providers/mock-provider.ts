@@ -183,6 +183,9 @@ export class MockProvider extends BaseDataProvider {
           website: 'https://tinubu2027.ng'
         },
         verified: true,
+        inecVerified: true,
+        sourceUrl: 'https://inec.gov.ng/candidates',
+        lastSyncedAt: new Date().toISOString(),
         sourceId: this.name,
         races: ['ng-2027-pres-race'],
         createdAt: new Date().toISOString(),
@@ -230,6 +233,7 @@ export class MockProvider extends BaseDataProvider {
           website: 'https://atiku2027.com'
         },
         verified: true,
+        inecVerified: false,
         sourceId: this.name,
         races: ['ng-2027-pres-race'],
         createdAt: new Date().toISOString(),
@@ -278,6 +282,7 @@ export class MockProvider extends BaseDataProvider {
           website: 'https://peterobi2027.ng'
         },
         verified: true,
+        inecVerified: false,
         sourceId: this.name,
         races: ['ng-2027-pres-race'],
         createdAt: new Date().toISOString(),

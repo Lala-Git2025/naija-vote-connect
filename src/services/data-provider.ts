@@ -15,6 +15,9 @@ import {
   SearchFilters 
 } from '@/types/election';
 
+// Re-export types for convenience
+export type { DataProviderResponse, SearchFilters } from '@/types/election';
+
 export interface DataProvider {
   readonly name: string;
   readonly version: string;

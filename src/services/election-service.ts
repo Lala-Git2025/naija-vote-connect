@@ -4,6 +4,10 @@
 import { dataProviderRegistry } from '@/services/data-provider';
 import { InecProvider } from '@/services/providers/inec-provider';
 import { MockProvider } from '@/services/providers/mock-provider';
+import { ManualInecProvider } from '@/services/providers/manual-inec-provider';
+import { CivicFeedsProvider } from '@/services/providers/civic-feeds-provider';
+import { FactCheckProvider } from '@/services/providers/fact-check-provider';
+import { syncService } from '@/services/sync-service';
 
 // Initialize data providers
 export function initializeDataProviders() {

@@ -46,6 +46,9 @@ export interface Candidate {
   funding: FundingSource[];
   socialMedia: SocialMediaLinks;
   verified: boolean;
+  inecVerified: boolean;
+  sourceUrl?: string;
+  lastSyncedAt?: string;
   sourceId: string;
   races: string[]; // race IDs
   createdAt: string;
@@ -162,33 +165,35 @@ export interface NewsItem {
   title: string;
   summary: string;
   content?: string;
-  source: string;
   author?: string;
   publishedAt: string;
   url: string;
-  category: 'General' | 'Candidate' | 'Election' | 'Policy' | 'Results';
+  imageUrl?: string;
+  category: 'General' | 'Candidate' | 'Election' | 'Policy' | 'Results' | 'Politics' | 'Civic Education';
   tags: string[];
-  relatedCandidates: string[];
-  relatedElections: string[];
-  sentiment: 'positive' | 'neutral' | 'negative';
   verified: boolean;
   sourceId: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface FactCheck {
   id: string;
   claim: string;
-  verdict: 'True' | 'Mostly True' | 'Half True' | 'Mostly False' | 'False' | 'Unverified';
+  verdict: 'True' | 'Mostly True' | 'Half True' | 'Mostly False' | 'False' | 'Unverified' | 'Partly False';
   explanation: string;
-  source: string;
-  url: string;
-  publishedAt: string;
-  relatedCandidates: string[];
-  relatedTopics: string[];
+  topic: string;
+  candidateId?: string;
+  checkedAt: string;
+  sourceUrl: string;
+  organization: string;
+  methodology?: string;
+  trustScore: number;
+  tags: string[];
   verified: boolean;
   sourceId: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Deadline {
