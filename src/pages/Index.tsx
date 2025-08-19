@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import PersonalizedDashboard from "@/components/PersonalizedDashboard";
@@ -7,20 +8,29 @@ import Footer from "@/components/Footer";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if user has completed onboarding
-    const onboardingStatus = localStorage.getItem('civicLensOnboarded');
-    if (!onboardingStatus) {
-      navigate('/onboarding');
-    } else {
-      setHasOnboarded(true);
+    // Redirect to auth if not logged in
+    if (!loading && !user) {
+      navigate('/auth');
+      return;
     }
-  }, [navigate]);
 
-  // Show loading state while checking onboarding status
-  if (hasOnboarded === null) {
+    // Check if user has completed onboarding
+    if (user) {
+      const onboardingStatus = localStorage.getItem('civicLensOnboarded');
+      if (!onboardingStatus) {
+        navigate('/onboarding');
+      } else {
+        setHasOnboarded(true);
+      }
+    }
+  }, [navigate, user, loading]);
+
+  // Show loading state while checking auth and onboarding status
+  if (loading || (!user && hasOnboarded === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -31,6 +41,11 @@ const Index = () => {
         </div>
       </div>
     );
+  }
+
+  // Don't render anything if user is not authenticated
+  if (!user) {
+    return null;
   }
 
   return (
