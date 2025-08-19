@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Vote, Info, Users, Calendar, User, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,12 +23,18 @@ const Header = () => {
     navigate('/auth');
   };
 
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   const navigationItems = [
     { label: "Candidates", href: "/candidates", icon: Users },
     { label: "Compare", href: "/candidates/compare", icon: Vote },
     { label: "Calendar", href: "/calendar", icon: Calendar },
     { label: "Democracy Hub", href: "/democracy-hub", icon: Info },
   ];
+
+  const isActiveRoute = (href: string) => location.pathname === href;
 
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
@@ -48,7 +55,7 @@ const Header = () => {
                 key={item.label}
                 to={item.href}
                 className={`flex items-center space-x-2 transition-colors duration-200 ${
-                  location.pathname === item.href 
+                  isActiveRoute(item.href)
                     ? 'text-primary font-semibold' 
                     : 'text-foreground hover:text-primary'
                 }`}
@@ -69,7 +76,7 @@ const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <DropdownMenuItem onClick={handleProfileClick}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
@@ -104,7 +111,7 @@ const Header = () => {
                   to={item.href}
                   onClick={() => setIsMenuOpen(false)}
                   className={`flex items-center space-x-3 transition-colors duration-200 px-4 py-2 rounded-md hover:bg-muted ${
-                    location.pathname === item.href 
+                    isActiveRoute(item.href)
                       ? 'text-primary font-semibold bg-muted' 
                       : 'text-foreground hover:text-primary'
                   }`}
