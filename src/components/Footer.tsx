@@ -33,7 +33,7 @@ const Footer = () => {
               <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
                 <Vote className="w-5 h-5 text-secondary-foreground" />
               </div>
-              <span className="text-xl font-bold">VoteInfo Nigeria</span>
+              <span className="text-xl font-bold">Civic Lens</span>
             </div>
             
             <p className="text-primary-foreground/80 leading-relaxed">
@@ -113,7 +113,7 @@ const Footer = () => {
         <div className="border-t border-primary-foreground/20 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-primary-foreground/80 text-sm text-center md:text-left">
-              © 2024 VoteInfo Nigeria. All rights reserved. Made with ❤️ for Nigerian democracy.
+              © 2024 Civic Lens. All rights reserved. Made with ❤️ for Nigerian democracy.
             </p>
             
             <div className="flex items-center space-x-4 text-sm text-primary-foreground/80">

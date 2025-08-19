@@ -1,8 +1,5 @@
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import VotingInfo from "@/components/VotingInfo";
-import CandidateProfiles from "@/components/CandidateProfiles";
-import ElectoralNews from "@/components/ElectoralNews";
+import PersonalizedDashboard from "@/components/PersonalizedDashboard";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -10,10 +7,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <Hero />
-        <VotingInfo />
-        <CandidateProfiles />
-        <ElectoralNews />
+        <PersonalizedDashboard />
       </main>
       <Footer />
     </div>
