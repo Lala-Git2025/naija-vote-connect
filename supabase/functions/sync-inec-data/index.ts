@@ -1,5 +1,51 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { fetchFromReplit } from './replit-adapter.ts'
+
+interface AppConfig {
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceRoleKey?: string;
+  };
+  inec: {
+    timetableUrls: string[];
+    candidateFiles: string[];
+    resultsLinks: string[];
+  };
+  feeds: {
+    factcheckRss: string[];
+    civicRss: string[];
+  };
+  replit: {
+    apiBase?: string;
+    apiKey?: string;
+  };
+}
+
+// Server-side configuration builder
+function getServerConfig(): AppConfig {
+  return {
+    supabase: {
+      url: Deno.env.get('SUPABASE_URL') || 'https://cjyjfxeeyumstsfsknyb.supabase.co',
+      anonKey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+      serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    },
+    inec: {
+      timetableUrls: (Deno.env.get('INEC_TIMETABLE_URLS') || '').split(',').filter(Boolean),
+      candidateFiles: (Deno.env.get('INEC_CANDIDATE_FILES') || '').split(',').filter(Boolean),
+      resultsLinks: (Deno.env.get('INEC_RESULTS_LINKS') || '').split(',').filter(Boolean)
+    },
+    feeds: {
+      factcheckRss: (Deno.env.get('FACTCHECK_RSS') || '').split(',').filter(Boolean),
+      civicRss: (Deno.env.get('CIVIC_RSS') || '').split(',').filter(Boolean)
+    },
+    replit: {
+      apiBase: Deno.env.get('REPLIT_API_BASE'),
+      apiKey: Deno.env.get('REPLIT_API_KEY')
+    }
+  };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,10 +99,17 @@ serve(async (req) => {
   }
 
   try {
+    const config = getServerConfig()
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      config.supabase.url,
+      config.supabase.serviceRoleKey ?? ''
     )
+
+    console.log('INEC sync starting with config:', {
+      timetableUrls: config.inec.timetableUrls.length,
+      candidateFiles: config.inec.candidateFiles.length,
+      hasReplit: !!config.replit.apiBase
+    })
 
     const { sync_type } = await req.json()
     console.log(`Starting INEC sync for: ${sync_type}`)
@@ -171,10 +224,15 @@ async function syncTimetables(supabase: any): Promise<SyncResult> {
   }
 
   try {
-    const urls = [
-      'https://www.inecnigeria.org/timetable/',
-      'https://www.inecnigeria.org/2027-elections/'
-    ]
+    const config = getServerConfig()
+    const urls = config.inec.timetableUrls.length > 0 
+      ? config.inec.timetableUrls 
+      : [
+          'https://www.inecnigeria.org/timetable/',
+          'https://www.inecnigeria.org/2027-elections/'
+        ]
+
+    console.log(`Syncing timetables from ${urls.length} sources`)
 
     for (const url of urls) {
       console.log(`Fetching timetable from: ${url}`)
@@ -199,12 +257,18 @@ async function syncTimetables(supabase: any): Promise<SyncResult> {
           typeof existingSync.metadata === 'object' && 
           'source_hash' in existingSync.metadata && 
           existingSync.metadata.source_hash === contentHash) {
-        console.log(`No changes detected for ${url}`)
+        console.log(`No changes detected for ${url}, skipping...`)
         continue
       }
 
-      // Fetch and parse the content (mock data for now)
-      const timetableData = await parseTimetableUrl(url)
+      // Try native parsing first, then fallback to Replit API
+      let timetableData = await parseTimetableUrl(url)
+      
+      if (!timetableData && config.replit.apiBase) {
+        console.log('Native parsing failed, trying Replit API fallback...')
+        timetableData = await fetchFromReplit(config, 'elections')
+      }
+      
       if (timetableData) {
         // Upsert elections
         for (const election of timetableData.elections) {
@@ -272,15 +336,26 @@ async function syncCandidates(supabase: any): Promise<SyncResult> {
   }
 
   try {
-    const feedUrls = [
-      'https://www.inecnigeria.org/candidates/',
-      'https://www.inecnigeria.org/2027-candidate-list/'
-    ]
+    const config = getServerConfig()
+    const feedUrls = config.inec.candidateFiles.length > 0
+      ? config.inec.candidateFiles
+      : [
+          'https://www.inecnigeria.org/candidates/',
+          'https://www.inecnigeria.org/2027-candidate-list/'
+        ]
+
+    console.log(`Syncing candidates from ${feedUrls.length} sources`)
 
     for (const url of feedUrls) {
       console.log(`Fetching candidates from: ${url}`)
       
-      const candidates = await parseCandidateUrl(url)
+      let candidates = await parseCandidateUrl(url)
+      
+      if (!candidates && config.replit.apiBase) {
+        console.log('Native parsing failed, trying Replit API fallback...')
+        candidates = await fetchFromReplit(config, 'candidates')
+      }
+      
       if (candidates) {
         for (const candidate of candidates) {
           result.processed++
