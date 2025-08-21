@@ -99,26 +99,20 @@ serve(async (req) => {
   }
 
   try {
-    const config = getServerConfig()
+    const config = await getProviderConfig()
     const supabase = createClient(
       config.supabase.url,
-      config.supabase.serviceRoleKey ?? ''
+      config.supabase.serviceKey
     )
 
-    console.log('INEC sync starting with config:', {
-      timetableUrls: config.inec.timetableUrls.length,
-      candidateFiles: config.inec.candidateFiles.length,
-      hasReplit: !!config.replit.apiBase
-    })
-
-    const { sync_type } = await req.json()
+    const { sync_type = 'elections' } = await req.json().catch(() => ({}))
     console.log(`Starting INEC sync for: ${sync_type}`)
 
     // Start sync run record
     const { data: syncRun, error: syncError } = await supabase
       .from('sync_runs')
       .insert({
-        provider: 'inec_api',
+        provider: 'inec_native',
         sync_type,
         status: 'running',
         started_at: new Date().toISOString(),
@@ -139,13 +133,17 @@ serve(async (req) => {
     try {
       switch (sync_type) {
         case 'elections':
-          result = await syncTimetables(supabase)
+        case 'timetables':
+          result = await syncTimetables(supabase, config)
           break
         case 'candidates':
-          result = await syncCandidates(supabase)
+          result = await syncCandidates(supabase, config)
           break
         case 'polling_units':
-          result = await syncPollingUnits(supabase)
+          result = await syncPollingUnits(supabase, config)
+          break
+        case 'results':
+          result = await syncResults(supabase, config)
           break
         default:
           throw new Error(`Unknown sync type: ${sync_type}`)
@@ -213,7 +211,7 @@ serve(async (req) => {
   }
 })
 
-async function syncTimetables(supabase: any): Promise<SyncResult> {
+async function syncTimetables(supabase: any, config: ProviderConfig): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
     processed: 0,
@@ -224,18 +222,14 @@ async function syncTimetables(supabase: any): Promise<SyncResult> {
   }
 
   try {
-    const config = getServerConfig()
-    const urls = config.inec.timetableUrls.length > 0 
-      ? config.inec.timetableUrls 
-      : [
-          'https://www.inecnigeria.org/timetable/',
-          'https://www.inecnigeria.org/2027-elections/'
-        ]
+    console.log(`Syncing timetables from ${config.inec.timetableUrls.length} sources`)
 
-    console.log(`Syncing timetables from ${urls.length} sources`)
+    // Try native parsing first
+    let timetableData = null;
+    let usedProvider = 'native';
 
-    for (const url of urls) {
-      console.log(`Fetching timetable from: ${url}`)
+    for (const url of config.inec.timetableUrls) {
+      console.log(`Trying native parsing for: ${url}`)
       
       // Check if URL has been updated using ETag/Last-Modified
       const headResponse = await fetchWithRetry(url, { method: 'HEAD' })
@@ -247,7 +241,7 @@ async function syncTimetables(supabase: any): Promise<SyncResult> {
       const { data: existingSync } = await supabase
         .from('sync_runs')
         .select('metadata')
-        .eq('provider', 'inec_api')
+        .eq('provider', 'inec_native')
         .eq('sync_type', 'elections')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -261,15 +255,30 @@ async function syncTimetables(supabase: any): Promise<SyncResult> {
         continue
       }
 
-      // Try native parsing first, then fallback to Replit API
-      let timetableData = await parseTimetableUrl(url)
-      
-      if (!timetableData && config.replit.apiBase) {
-        console.log('Native parsing failed, trying Replit API fallback...')
-        timetableData = await fetchFromReplit(config, 'elections')
+      try {
+        timetableData = await parseTimetableUrl(url)
+        if (timetableData && (timetableData.elections.length > 0 || timetableData.deadlines.length > 0)) {
+          console.log(`Native parsing successful: ${timetableData.elections.length} elections, ${timetableData.deadlines.length} deadlines`)
+          break;
+        }
+      } catch (error) {
+        console.warn(`Native parsing failed for ${url}:`, error.message)
       }
-      
-      if (timetableData) {
+    }
+
+    // Fallback to Replit API if native parsing fails or returns empty data
+    if (!timetableData && config.replit.apiBase) {
+      console.log('Native parsing failed, trying Replit API fallback...')
+      try {
+        timetableData = await fetchFromReplit(config.replit, 'elections')
+        usedProvider = 'replit';
+        console.log(`Replit API successful: ${timetableData?.elections?.length || 0} elections`)
+      } catch (error) {
+        console.warn('Replit API fallback failed:', error.message)
+      }
+    }
+    
+    if (timetableData) {
         // Upsert elections
         for (const election of timetableData.elections) {
           result.processed++

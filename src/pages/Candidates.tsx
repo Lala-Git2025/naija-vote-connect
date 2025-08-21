@@ -14,6 +14,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { useSupabaseCandidates, useSupabaseRaces } from "@/hooks/useSupabaseElectionData";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 
 const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,6 +24,12 @@ const Candidates = () => {
 
   const { data: candidates, isLoading } = useSupabaseCandidates();
   const { data: races } = useSupabaseRaces();
+
+  // Get last sync time for display
+  const getLastCandidateSync = () => {
+    if (!candidates?.length) return null;
+    return candidates[0]?.updatedAt;
+  };
 
   // Mock candidates data for fallback
   const mockCandidates = [
@@ -192,11 +199,21 @@ const Candidates = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-4">Candidate Profiles</h1>
-          <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Explore verified profiles of candidates running for various positions across Nigeria. 
-            Compare their backgrounds, positions on key issues, and track records.
-          </p>
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground mb-4">Candidate Profiles</h1>
+              <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
+                Explore verified profiles of candidates running for various positions across Nigeria. 
+                Compare their backgrounds, positions on key issues, and track records.
+              </p>
+            </div>
+            <SyncStatusIndicator 
+              lastUpdated={getLastCandidateSync()}
+              dataType="candidates"
+              sourceUrl="https://www.inecnigeria.org/candidates/"
+              className="flex-shrink-0 mt-2"
+            />
+          </div>
           
           {/* Search and Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-6xl mx-auto">

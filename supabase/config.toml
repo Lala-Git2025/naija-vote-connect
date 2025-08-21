@@ -69,5 +69,5 @@ verify_jwt = false
 [functions.sync-news]
 verify_jwt = false
 
-[functions.sync-fact-checks]
+[functions.sync-inec-results]
 verify_jwt = false
