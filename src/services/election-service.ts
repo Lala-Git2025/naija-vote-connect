@@ -18,7 +18,6 @@ export function initializeDataProviders() {
   // Register INEC provider (production ready)
   const inecProvider = new InecProvider({
     name: 'INEC_OFFICIAL',
-    fallbackMode: 'manual', // Start with manual mode
     rateLimit: {
       requests: 100,
       windowMs: 60000 // 100 requests per minute
