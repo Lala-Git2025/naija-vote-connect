@@ -215,8 +215,30 @@ const Candidates = () => {
             />
           </div>
           
-          {/* Search and Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          {/* Primary State Filter */}
+          <div className="max-w-md mx-auto">
+            <label className="block text-sm font-medium text-foreground mb-2 flex items-center">
+              <MapPin className="w-4 h-4 mr-2" />
+              Filter by State
+            </label>
+            <Select value={filterState} onValueChange={setFilterState}>
+              <SelectTrigger className="h-12 text-base">
+                <SelectValue placeholder="Select a State" />
+              </SelectTrigger>
+              <SelectContent>
+                {nigerianStates.map(state => (
+                  <SelectItem key={state} value={state === "All States" ? "all" : state.toLowerCase()}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Secondary Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -240,19 +262,6 @@ const Candidates = () => {
               </SelectContent>
             </Select>
             
-            <Select value={filterState} onValueChange={setFilterState}>
-              <SelectTrigger>
-                <SelectValue placeholder="State" />
-              </SelectTrigger>
-              <SelectContent>
-                {nigerianStates.map(state => (
-                  <SelectItem key={state} value={state === "All States" ? "all" : state.toLowerCase()}>
-                    {state}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort by" />
@@ -265,12 +274,40 @@ const Candidates = () => {
             </Select>
           </div>
         </div>
+        </div>
 
-        {/* Results Count */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-muted-foreground">
-            Showing {filteredCandidates.length} candidate{filteredCandidates.length !== 1 ? 's' : ''}
-          </p>
+        {/* Results Count & Active Filters */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="space-y-2">
+            <p className="text-muted-foreground">
+              Showing {filteredCandidates.length} candidate{filteredCandidates.length !== 1 ? 's' : ''}
+              {filterState !== "all" && (
+                <span className="ml-1">
+                  in <span className="font-medium capitalize">{filterState}</span>
+                </span>
+              )}
+            </p>
+            {(filterState !== "all" || filterPosition !== "all" || searchTerm) && (
+              <div className="flex flex-wrap gap-2">
+                {filterState !== "all" && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterState("all")}>
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {filterState.charAt(0).toUpperCase() + filterState.slice(1)} ✕
+                  </Badge>
+                )}
+                {filterPosition !== "all" && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterPosition("all")}>
+                    {positions.find(p => p.value === filterPosition)?.label} ✕
+                  </Badge>
+                )}
+                {searchTerm && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearchTerm("")}>
+                    "{searchTerm}" ✕
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex space-x-2">
             <Link to="/candidates/compare">
               <Button variant="outline">
