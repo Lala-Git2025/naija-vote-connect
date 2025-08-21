@@ -2,7 +2,12 @@
 // Only crawls allowlisted domains and specific page types
 
 import { BaseSourceAdapter, RawManifesto } from './base-adapter';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = "https://cjyjfxeeyumstsfsknyb.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqeWpmeGVleXVtc3RzZnNrbnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1Njk0NzMsImV4cCI6MjA3MTE0NTQ3M30.Z4XQ305Ky_Yn1Cy3KF6bOrg90mXVnN4nvBgobSxO424";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export class PartyWebsiteAdapter extends BaseSourceAdapter {
   private allowlistedDomains = [
@@ -89,7 +94,7 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
         const checksum = this.generateChecksum(manifesto.raw_text);
         
         // Check if manifesto with same checksum already exists
-        const { data: existingManifesto } = await this.supabase
+        const { data: existingManifesto } = await supabase
           .from('manifestos')
           .select('id')
           .eq('party_code', partyCode)
@@ -103,7 +108,7 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
         }
 
         // Find party's presidential candidate
-        const { data: candidate } = await this.supabase
+        const { data: candidate } = await supabase
           .from('candidates')
           .select('id')
           .eq('party_code', partyCode)
@@ -131,7 +136,7 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
         };
 
         // Always create new version for party website manifestos
-        const { error } = await this.supabase
+        const { error } = await supabase
           .from('manifestos')
           .insert(manifestoData);
 
@@ -168,8 +173,4 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
     ) || url.endsWith('.pdf');
   }
 
-  private get supabase() {
-    // Use the already imported supabase client
-    return supabase;
-  }
 }
