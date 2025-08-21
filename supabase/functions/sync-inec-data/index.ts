@@ -228,7 +228,15 @@ async function syncTimetables(supabase: any, config: AppConfig): Promise<SyncRes
     let timetableData = null;
     let usedProvider = 'native';
 
-    for (const url of config.inec.timetableUrls) {
+    const inecUrls = config.inec.timetableUrls.length > 0 
+      ? config.inec.timetableUrls 
+      : [
+          'https://www.inecnigeria.org/',
+          'https://www.inecnigeria.org/timetable-and-schedule-of-activities-for-osun-state-2026-governorship-election/',
+          'https://www.inecnigeria.org/final-list-of-candidates-for-anambra-state-governorship-election/'
+        ];
+
+    for (const url of inecUrls) {
       console.log(`Trying native parsing for: ${url}`)
       
       // Check if URL has been updated using ETag/Last-Modified
