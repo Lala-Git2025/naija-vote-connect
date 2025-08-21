@@ -2,6 +2,7 @@
 // Never modifies candidate/manifesto data, only creates linked fact-checks
 
 import { BaseSourceAdapter, RawFactCheck } from './base-adapter';
+import { supabase } from '@/integrations/supabase/client';
 
 export class DubawaAdapter extends BaseSourceAdapter {
   private rssUrl = 'https://dubawa.org/feed/';
@@ -153,7 +154,7 @@ export class DubawaAdapter extends BaseSourceAdapter {
   }
 
   private get supabase() {
-    const { supabase } = require('@/integrations/supabase/client');
+    // Use the already imported supabase client
     return supabase;
   }
 }

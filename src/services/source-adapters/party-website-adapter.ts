@@ -2,6 +2,7 @@
 // Only crawls allowlisted domains and specific page types
 
 import { BaseSourceAdapter, RawManifesto } from './base-adapter';
+import { supabase } from '@/integrations/supabase/client';
 
 export class PartyWebsiteAdapter extends BaseSourceAdapter {
   private allowlistedDomains = [
@@ -124,7 +125,7 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
           source_url: manifesto.source_url,
           version_label: `Official Party Website ${new Date().getFullYear()}`,
           raw_text: manifesto.raw_text,
-          sections: sections,
+          sections: JSON.stringify(sections),
           checksum: checksum,
           published_at: manifesto.published_at?.toISOString()
         };
@@ -168,7 +169,7 @@ GOVERNANCE: We stand for competence, character, and capacity in leadership. Meri
   }
 
   private get supabase() {
-    const { supabase } = require('@/integrations/supabase/client');
+    // Use the already imported supabase client
     return supabase;
   }
 }

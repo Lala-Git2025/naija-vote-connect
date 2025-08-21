@@ -2,6 +2,7 @@
 // Maps official INEC candidate lists to standardized format
 
 import { BaseSourceAdapter, RawCandidate } from './base-adapter';
+import { supabase } from '@/integrations/supabase/client';
 
 export class INECAdapter extends BaseSourceAdapter {
   private baseUrl = 'https://www.inecnigeria.org';
@@ -127,8 +128,7 @@ export class INECAdapter extends BaseSourceAdapter {
   }
 
   private get supabase() {
-    // Import here to avoid circular dependencies
-    const { supabase } = require('@/integrations/supabase/client');
+    // Use the already imported supabase client
     return supabase;
   }
 }

@@ -2,6 +2,7 @@
 // Maps manifestos by normalized name + party + office matching
 
 import { BaseSourceAdapter, RawManifesto, ManifestoSection } from './base-adapter';
+import { supabase } from '@/integrations/supabase/client';
 
 export class ManifestoNGAdapter extends BaseSourceAdapter {
   private baseUrl = 'https://manifesto.ng/api';
@@ -137,7 +138,7 @@ GOVERNANCE: Institute merit-based appointments in public service. Implement stro
           source_url: manifesto.source_url,
           version_label: `Manifesto.NG ${new Date().getFullYear()}`,
           raw_text: manifesto.raw_text,
-          sections: sections,
+          sections: JSON.stringify(sections),
           checksum: checksum,
           published_at: manifesto.published_at?.toISOString()
         };
@@ -173,7 +174,7 @@ GOVERNANCE: Institute merit-based appointments in public service. Implement stro
   }
 
   private get supabase() {
-    const { supabase } = require('@/integrations/supabase/client');
+    // Use the already imported supabase client
     return supabase;
   }
 }
