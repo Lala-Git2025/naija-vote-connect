@@ -28,70 +28,46 @@ export interface RAGResponse {
 }
 
 export class RAGService {
-  private openAIApiKey: string | null = null;
-
   constructor() {
-    // In production, this would be handled by edge functions
-    this.openAIApiKey = process.env.OPENAI_API_KEY || null;
+    // All OpenAI operations are now handled by secure edge functions
   }
 
-  // Generate embeddings for manifesto text
+  // Generate embeddings for manifesto text using secure edge function
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
     try {
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-ada-002',
-          input: text.substring(0, 8000), // Limit input length
-        }),
+      const { data, error } = await supabase.functions.invoke('generate-embedding', {
+        body: { text }
       });
 
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+      if (error) {
+        console.error('Error calling generate-embedding function:', error);
+        throw new Error(`Failed to generate embedding: ${error.message}`);
       }
 
-      const data = await response.json();
-      return data.data[0].embedding;
+      if (!data?.embedding) {
+        throw new Error('No embedding returned from function');
+      }
+
+      return data.embedding;
     } catch (error) {
       console.error('Error generating embedding:', error);
       throw error;
     }
   }
 
-  // Update manifesto embeddings
+  // Update manifesto embeddings using secure edge function
   async updateManifestoEmbeddings(manifestoId: string): Promise<void> {
     try {
-      // Get manifesto content
-      const { data: manifesto } = await supabase
-        .from('manifestos')
-        .select('raw_text, sections')
-        .eq('id', manifestoId)
-        .single();
+      const { data, error } = await supabase.functions.invoke('update-embeddings', {
+        body: { manifestoId }
+      });
 
-      if (!manifesto) {
-        throw new Error('Manifesto not found');
+      if (error) {
+        console.error('Error calling update-embeddings function:', error);
+        throw new Error(`Failed to update embeddings: ${error.message}`);
       }
 
-      // Generate embedding for full text
-      const embedding = await this.generateEmbedding(manifesto.raw_text);
-
-      // Update manifesto with embedding
-      const { error } = await supabase
-        .from('manifestos')
-        .update({ embedding: `[${embedding.join(',')}]` })
-        .eq('id', manifestoId);
-
-      if (error) throw error;
-
-      console.log(`Updated embedding for manifesto ${manifestoId}`);
+      console.log(`Updated embedding for manifesto ${manifestoId}:`, data.message);
     } catch (error) {
       console.error(`Error updating embedding for manifesto ${manifestoId}:`, error);
       throw error;
@@ -261,81 +237,49 @@ export class RAGService {
   }
 
   private async callAI(query: string, context: string): Promise<string> {
-    if (!this.openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const systemPrompt = `You are an expert analyst of Nigerian political manifestos. Answer questions based ONLY on the provided manifesto content. 
-
-Guidelines:
-- Provide factual, balanced responses
-- Always cite specific candidates and parties when referencing their positions
-- If information is not in the provided context, say so clearly
-- Maintain neutral language and avoid political bias
-- Include specific policy details when available`;
-
-    const userPrompt = `Query: ${query}
-
-Available manifesto content:
-${context}
-
-Please provide a comprehensive answer based on the manifesto content provided.`;
-
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: 1000,
-          temperature: 0.3
-        }),
+      const { data, error } = await supabase.functions.invoke('generate-rag-response', {
+        body: { query, context }
       });
 
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+      if (error) {
+        console.error('Error calling generate-rag-response function:', error);
+        return 'I encountered an error while generating a response. Please try again.';
       }
 
-      const data = await response.json();
-      return data.choices[0].message.content;
+      return data?.response || 'I encountered an error while generating a response. Please try again.';
     } catch (error) {
-      console.error('Error calling OpenAI:', error);
+      console.error('Error calling AI:', error);
       return 'I encountered an error while generating a response. Please try again.';
     }
   }
 
-  // Batch update all manifesto embeddings
+  // Batch update all manifesto embeddings using secure edge function
   async updateAllEmbeddings(): Promise<{ created: number; updated: number; errors: string[] }> {
-    const { data: manifestos } = await supabase
-      .from('manifestos')
-      .select('id, raw_text')
-      .is('embedding', null);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-embeddings', {
+        body: {} // No manifestoId means update all
+      });
 
-    if (!manifestos || manifestos.length === 0) {
-      return { created: 0, updated: 0, errors: [] };
-    }
-
-    let updated = 0;
-    const errors: string[] = [];
-
-    for (const manifesto of manifestos) {
-      try {
-        await this.updateManifestoEmbeddings(manifesto.id);
-        updated++;
-      } catch (error) {
-        errors.push(`Failed to update embedding for manifesto ${manifesto.id}: ${error}`);
+      if (error) {
+        console.error('Error calling update-embeddings function:', error);
+        return { created: 0, updated: 0, errors: [error.message] };
       }
-    }
 
-    console.log(`Embedding update completed: ${updated} updated, ${errors.length} errors`);
-    return { created: 0, updated, errors };
+      console.log('Embedding update completed:', data.message);
+      return { 
+        created: 0, 
+        updated: data.updated || 0, 
+        errors: data.errors || [] 
+      };
+    } catch (error) {
+      console.error('Error updating all embeddings:', error);
+      return { 
+        created: 0, 
+        updated: 0, 
+        errors: [`Failed to update embeddings: ${error.message}`] 
+      };
+    }
   }
 }
 

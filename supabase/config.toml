@@ -71,3 +71,15 @@ verify_jwt = false
 
 [functions.sync-inec-results]
 verify_jwt = false
+
+[functions.sync-fact-checks]
+verify_jwt = false
+
+[functions.generate-embedding]
+verify_jwt = false
+
+[functions.generate-rag-response]
+verify_jwt = false
+
+[functions.update-embeddings]
+verify_jwt = false
