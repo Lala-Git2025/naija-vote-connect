@@ -1,28 +1,55 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface SyncRunRecord {
-  id: string
-  provider: string
-  sync_type: string
-  status: string
-  started_at: string
-  completed_at?: string
-  records_processed: number
-  records_created: number
-  records_updated: number
-  error_message?: string
-  metadata: any
+interface INECTimetable {
+  elections: Array<{
+    name: string;
+    type: string;
+    election_date: string;
+    states: string[];
+    description: string;
+  }>;
+  deadlines: Array<{
+    title: string;
+    description: string;
+    type: string;
+    deadline_date: string;
+    priority: string;
+  }>;
 }
 
-Deno.serve(async (req) => {
+interface INECCandidate {
+  name: string;
+  party: string;
+  race_name: string;
+  state?: string;
+  constituency?: string;
+  age?: number;
+  occupation?: string;
+  education?: string;
+  inec_candidate_id: string;
+}
+
+interface SyncResult {
+  success: boolean;
+  processed: number;
+  created: number;
+  updated: number;
+  errors: string[];
+  sourceUrl?: string;
+  sourceHash?: string;
+  lastSyncedAt: string;
+}
+
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -31,472 +58,483 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { sync_type = 'elections' } = await req.json().catch(() => ({}))
-    
-    console.log(`Starting INEC data sync for: ${sync_type}`)
+    const { sync_type } = await req.json()
+    console.log(`Starting INEC sync for: ${sync_type}`)
 
-    // Create sync run record
+    // Start sync run record
     const { data: syncRun, error: syncError } = await supabase
       .from('sync_runs')
       .insert({
         provider: 'inec_api',
         sync_type,
         status: 'running',
-        metadata: { source: 'inec_api', version: '1.0' }
+        started_at: new Date().toISOString(),
+        records_processed: 0,
+        records_created: 0,
+        records_updated: 0
       })
       .select()
       .single()
 
     if (syncError) {
-      console.error('Error creating sync run:', syncError)
+      console.error('Failed to create sync run:', syncError)
       throw syncError
     }
 
-    let recordsProcessed = 0
-    let recordsCreated = 0
-    let recordsUpdated = 0
+    let result: SyncResult;
 
     try {
-      // Sync different data types based on sync_type
       switch (sync_type) {
         case 'elections':
-          const electionData = await syncElections(supabase)
-          recordsProcessed = electionData.processed
-          recordsCreated = electionData.created
-          recordsUpdated = electionData.updated
+          result = await syncTimetables(supabase)
           break
-          
         case 'candidates':
-          const candidateData = await syncCandidates(supabase)
-          recordsProcessed = candidateData.processed
-          recordsCreated = candidateData.created
-          recordsUpdated = candidateData.updated
+          result = await syncCandidates(supabase)
           break
-          
         case 'polling_units':
-          const puData = await syncPollingUnits(supabase)
-          recordsProcessed = puData.processed
-          recordsCreated = puData.created
-          recordsUpdated = puData.updated
+          result = await syncPollingUnits(supabase)
           break
-          
         default:
           throw new Error(`Unknown sync type: ${sync_type}`)
       }
 
-      // Update sync run as completed
+      // Update sync run with results
       await supabase
         .from('sync_runs')
         .update({
-          status: 'completed',
+          status: result.success ? 'completed' : 'failed',
           completed_at: new Date().toISOString(),
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          records_processed: result.processed,
+          records_created: result.created,
+          records_updated: result.updated,
+          error_message: result.errors.length > 0 ? result.errors.join('; ') : null,
+          metadata: {
+            source_url: result.sourceUrl,
+            source_hash: result.sourceHash,
+            errors: result.errors
+          }
         })
         .eq('id', syncRun.id)
 
-      console.log(`Sync completed: ${recordsProcessed} processed, ${recordsCreated} created, ${recordsUpdated} updated`)
+      console.log(`Sync completed: ${sync_type}`, result)
 
       return new Response(
         JSON.stringify({
-          success: true,
-          sync_run_id: syncRun.id,
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          success: result.success,
+          processed: result.processed,
+          created: result.created,
+          updated: result.updated,
+          errors: result.errors
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
       )
 
-    } catch (error) {
-      // Update sync run as failed
+    } catch (syncError) {
+      console.error(`Sync failed for ${sync_type}:`, syncError)
+      
+      // Update sync run with error
       await supabase
         .from('sync_runs')
         .update({
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error_message: error.message,
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          error_message: syncError.message
         })
         .eq('id', syncRun.id)
 
-      throw error
+      throw syncError
     }
 
   } catch (error) {
-    console.error('Sync error:', error)
+    console.error('INEC sync error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      },
     )
   }
 })
 
-async function syncElections(supabase: any) {
-  // Enhanced INEC elections data with proper structure
-  const mockElections = [
-    {
-      name: '2027 Presidential Election',
-      type: 'presidential',
-      election_date: '2027-02-25',
-      status: 'upcoming',
-      description: 'Presidential Election for the Federal Republic of Nigeria',
-      states: ['FCT', 'Lagos', 'Kano', 'Rivers', 'Ogun', 'Kaduna', 'Cross River', 'Akwa Ibom', 'Delta', 'Oyo']
-    },
-    {
-      name: '2027 National Assembly Elections',
-      type: 'legislative', 
-      election_date: '2027-02-25',
-      status: 'upcoming',
-      description: 'Senate and House of Representatives Elections',
-      states: ['FCT', 'Lagos', 'Kano', 'Rivers', 'Ogun', 'Kaduna', 'Cross River', 'Akwa Ibom', 'Delta', 'Oyo']
-    },
-    {
-      name: '2027 Gubernatorial Elections',
-      type: 'gubernatorial',
-      election_date: '2027-03-11', 
-      status: 'upcoming',
-      description: 'Governorship and State Assembly Elections',
-      states: ['Lagos', 'Kano', 'Rivers', 'Ogun', 'Kaduna', 'Cross River', 'Akwa Ibom', 'Delta', 'Oyo']
-    }
-  ]
-
-  let processed = 0
-  let created = 0
-  let updated = 0
-
-  for (const election of mockElections) {
-    processed++
-    
-    const { data: existing } = await supabase
-      .from('elections')
-      .select('id')
-      .eq('name', election.name)
-      .maybeSingle()
-
-    if (existing) {
-      await supabase
-        .from('elections')
-        .update(election)
-        .eq('id', existing.id)
-      updated++
-    } else {
-      await supabase
-        .from('elections')
-        .insert(election)
-      created++
-    }
+async function syncTimetables(supabase: any): Promise<SyncResult> {
+  const result: SyncResult = {
+    success: false,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    errors: [],
+    lastSyncedAt: new Date().toISOString()
   }
 
-  // After elections are created, create races and deadlines
-  const { data: elections } = await supabase
-    .from('elections')
-    .select('*')
+  try {
+    const urls = [
+      'https://www.inecnigeria.org/timetable/',
+      'https://www.inecnigeria.org/2027-elections/'
+    ]
 
-  // Create races for each election
-  await createRacesForElections(supabase, elections || [])
-  
-  // Create deadlines
-  await createDeadlines(supabase, elections || [])
+    for (const url of urls) {
+      console.log(`Fetching timetable from: ${url}`)
+      
+      // Check if URL has been updated using ETag/Last-Modified
+      const headResponse = await fetchWithRetry(url, { method: 'HEAD' })
+      const etag = headResponse.headers.get('etag')
+      const lastModified = headResponse.headers.get('last-modified')
+      const contentHash = etag || lastModified || Date.now().toString()
+      
+      // Check if we've already processed this version
+      const { data: existingSync } = await supabase
+        .from('sync_runs')
+        .select('metadata')
+        .eq('provider', 'inec_api')
+        .eq('sync_type', 'elections')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-  return { processed, created, updated }
+      if (existingSync?.metadata && 
+          typeof existingSync.metadata === 'object' && 
+          'source_hash' in existingSync.metadata && 
+          existingSync.metadata.source_hash === contentHash) {
+        console.log(`No changes detected for ${url}`)
+        continue
+      }
+
+      // Fetch and parse the content (mock data for now)
+      const timetableData = await parseTimetableUrl(url)
+      if (timetableData) {
+        // Upsert elections
+        for (const election of timetableData.elections) {
+          result.processed++
+          const { error } = await supabase
+            .from('elections')
+            .upsert({
+              name: election.name,
+              type: mapElectionType(election.type),
+              election_date: election.election_date,
+              states: election.states,
+              description: election.description,
+              status: 'upcoming'
+            }, { onConflict: 'name' })
+
+          if (error) {
+            result.errors.push(`Election error: ${error.message}`)
+          } else {
+            result.created++
+          }
+        }
+
+        // Upsert deadlines
+        for (const deadline of timetableData.deadlines) {
+          result.processed++
+          const { error } = await supabase
+            .from('deadlines')
+            .upsert({
+              title: deadline.title,
+              description: deadline.description,
+              type: deadline.type,
+              deadline_date: deadline.deadline_date,
+              priority: deadline.priority
+            }, { onConflict: 'title' })
+
+          if (error) {
+            result.errors.push(`Deadline error: ${error.message}`)
+          } else {
+            result.created++
+          }
+        }
+
+        result.sourceUrl = url
+        result.sourceHash = contentHash
+      }
+    }
+
+    result.success = result.errors.length === 0
+    return result
+
+  } catch (error) {
+    result.errors.push(`Fetch error: ${error.message}`)
+    return result
+  }
 }
 
-async function createRacesForElections(supabase: any, elections: any[]) {
-  const races = []
-  
-  for (const election of elections) {
-    if (election.type === 'presidential') {
-      races.push({
-        name: 'President of Nigeria',
-        type: 'presidential',
-        election_id: election.id,
-        description: 'Presidential race for the Federal Republic of Nigeria'
-      })
-    } else if (election.type === 'gubernatorial') {
-      for (const state of election.states) {
-        races.push({
-          name: `Governor of ${state} State`,
-          type: 'gubernatorial',
-          state: state,
-          election_id: election.id,
-          description: `Gubernatorial race for ${state} State`
-        })
+async function syncCandidates(supabase: any): Promise<SyncResult> {
+  const result: SyncResult = {
+    success: false,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    errors: [],
+    lastSyncedAt: new Date().toISOString()
+  }
+
+  try {
+    const feedUrls = [
+      'https://www.inecnigeria.org/candidates/',
+      'https://www.inecnigeria.org/2027-candidate-list/'
+    ]
+
+    for (const url of feedUrls) {
+      console.log(`Fetching candidates from: ${url}`)
+      
+      const candidates = await parseCandidateUrl(url)
+      if (candidates) {
+        for (const candidate of candidates) {
+          result.processed++
+          
+          // Find or create race
+          const { data: race } = await supabase
+            .from('races')
+            .select('id')
+            .eq('name', candidate.race_name)
+            .maybeSingle()
+
+          if (race) {
+            const { error } = await supabase
+              .from('candidates')
+              .upsert({
+                name: candidate.name,
+                party: candidate.party,
+                race_id: race.id,
+                age: candidate.age,
+                occupation: candidate.occupation,
+                education: candidate.education,
+                inec_candidate_id: candidate.inec_candidate_id,
+                status: 'active'
+              }, { onConflict: 'inec_candidate_id' })
+
+            if (error) {
+              result.errors.push(`Candidate error: ${error.message}`)
+            } else {
+              result.created++
+            }
+          } else {
+            result.errors.push(`Race not found: ${candidate.race_name}`)
+          }
+        }
+        
+        result.sourceUrl = url
+        result.sourceHash = generateChecksum(candidates)
       }
-    } else if (election.type === 'legislative') {
-      // Senate races
-      for (const state of election.states) {
-        const districts = state === 'FCT' ? ['FCT'] : ['Central', 'North', 'South']
-        for (const district of districts) {
-          races.push({
-            name: `${state} ${district} Senatorial District`,
-            type: 'senatorial',
-            state: state,
-            constituency: `${state} ${district}`,
-            election_id: election.id,
-            description: `Senate seat for ${state} ${district} Senatorial District`
-          })
+    }
+
+    result.success = result.errors.length === 0
+    return result
+
+  } catch (error) {
+    result.errors.push(`Fetch error: ${error.message}`)
+    return result
+  }
+}
+
+async function syncPollingUnits(supabase: any): Promise<SyncResult> {
+  const result: SyncResult = {
+    success: false,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    errors: [],
+    lastSyncedAt: new Date().toISOString()
+  }
+
+  try {
+    // Mock polling units data - in production this would parse INEC CSV/Excel files
+    const mockPollingUnits = [
+      {
+        name: 'Ojodu Primary School',
+        code: 'LAG001-001',
+        state: 'Lagos',
+        lga: 'Ikeja',
+        ward: 'Ward 1',
+        address: '123 Ojodu Road, Ikeja',
+        registered_voters: 2500,
+        latitude: 6.5244,
+        longitude: 3.3792
+      },
+      {
+        name: 'Community Hall Surulere',
+        code: 'LAG002-001', 
+        state: 'Lagos',
+        lga: 'Surulere',
+        ward: 'Ward 2',
+        address: '456 Surulere Street',
+        registered_voters: 1800,
+        latitude: 6.5056,
+        longitude: 3.3568
+      }
+    ]
+
+    for (const unit of mockPollingUnits) {
+      result.processed++
+      const { error } = await supabase
+        .from('polling_units')
+        .upsert({
+          name: unit.name,
+          code: unit.code,
+          state: unit.state,
+          lga: unit.lga,
+          ward: unit.ward,
+          address: unit.address,
+          registered_voters: unit.registered_voters,
+          latitude: unit.latitude,
+          longitude: unit.longitude,
+          inec_pu_id: unit.code
+        }, { onConflict: 'code' })
+
+      if (error) {
+        result.errors.push(`Polling unit error: ${error.message}`)
+      } else {
+        result.created++
+      }
+    }
+
+    result.success = result.errors.length === 0
+    return result
+
+  } catch (error) {
+    result.errors.push(`Sync error: ${error.message}`)
+    return result
+  }
+}
+
+// Helper functions
+async function parseTimetableUrl(url: string): Promise<INECTimetable | null> {
+  try {
+    // Mock data - in production this would parse actual INEC PDFs/HTML
+    return {
+      elections: [
+        {
+          name: '2027 Presidential Election',
+          type: 'presidential',
+          election_date: '2027-02-25',
+          states: ['FCT', 'Lagos', 'Kano', 'Rivers', 'Ogun', 'Kaduna'],
+          description: 'Presidential Election for the Federal Republic of Nigeria'
+        },
+        {
+          name: '2027 Senate Elections',
+          type: 'senatorial', 
+          election_date: '2027-02-25',
+          states: ['FCT', 'Lagos', 'Kano', 'Rivers', 'Ogun', 'Kaduna'],
+          description: 'Senate Elections for all states'
+        }
+      ],
+      deadlines: [
+        {
+          title: 'Voter Registration Deadline - Updated',
+          description: 'Extended deadline for voter registration and PVC collection',
+          type: 'registration',
+          deadline_date: '2026-12-31T23:59:59Z',
+          priority: 'high'
+        },
+        {
+          title: 'Candidate Nomination Deadline',
+          description: 'Final date for candidate nomination submission',
+          type: 'nomination',
+          deadline_date: '2026-10-15T17:00:00Z',
+          priority: 'high'
+        }
+      ]
+    }
+  } catch (error) {
+    console.error('Error parsing timetable:', error)
+    return null
+  }
+}
+
+async function parseCandidateUrl(url: string): Promise<INECCandidate[] | null> {
+  try {
+    // Mock data - in production this would parse actual INEC candidate files
+    return [
+      {
+        name: 'Dr. Kemi Adeosun',
+        party: 'Social Democratic Party (SDP)',
+        race_name: 'President of Nigeria',
+        age: 59,
+        occupation: 'Economist & Former Minister',
+        education: 'PhD Economics University of Cambridge',
+        inec_candidate_id: 'INEC-PRES-2027-005'
+      },
+      {
+        name: 'Alhaji Musa Yar\'Adua',
+        party: 'Peoples Redemption Party (PRP)',
+        race_name: 'President of Nigeria',
+        age: 63,
+        occupation: 'Businessman & Politician',
+        education: 'BSc Political Science Ahmadu Bello University',
+        inec_candidate_id: 'INEC-PRES-2027-006'
+      }
+    ]
+  } catch (error) {
+    console.error('Error parsing candidates:', error)
+    return null
+  }
+}
+
+async function fetchWithRetry(url: string, options: RequestInit = {}, maxRetries = 3): Promise<Response> {
+  let lastError;
+  
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'User-Agent': 'CivicLens/1.0 (Nigeria Election Monitor)',
+          ...options.headers
+        }
+      });
+      
+      if (response.status === 429) {
+        // Rate limited - exponential backoff
+        const delay = Math.pow(2, i) * 1000;
+        console.log(`Rate limited, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      if (response.status >= 500) {
+        // Server error - retry
+        if (i < maxRetries) {
+          const delay = Math.pow(2, i) * 1000;
+          console.log(`Server error ${response.status}, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
         }
       }
-    }
-  }
-
-  if (races.length > 0) {
-    await supabase
-      .from('races')
-      .upsert(races, { onConflict: 'name' })
-  }
-}
-
-async function createDeadlines(supabase: any, elections: any[]) {
-  const presidentialElection = elections.find(e => e.type === 'presidential')
-  if (!presidentialElection) return
-
-  const deadlines = [
-    {
-      title: 'Voter Registration Deadline',
-      description: 'Last date for voter registration and PVC collection for 2027 elections',
-      type: 'registration',
-      deadline_date: '2026-12-15T23:59:59Z',
-      priority: 'high',
-      election_id: presidentialElection.id
-    },
-    {
-      title: 'Campaign Period Begins',
-      description: 'Official campaign period starts for all candidates',
-      type: 'campaign',
-      deadline_date: '2026-11-25T00:00:00Z',
-      priority: 'medium',
-      election_id: presidentialElection.id
-    },
-    {
-      title: 'Campaign Period Ends',
-      description: 'All campaign activities must cease 24 hours before election',
-      type: 'campaign',
-      deadline_date: '2027-02-23T23:59:59Z',
-      priority: 'high',
-      election_id: presidentialElection.id
-    },
-    {
-      title: 'Candidate List Publication',
-      description: 'INEC publishes final list of cleared candidates',
-      type: 'administrative',
-      deadline_date: '2026-12-31T17:00:00Z',
-      priority: 'medium',
-      election_id: presidentialElection.id
-    }
-  ]
-
-  await supabase
-    .from('deadlines')
-    .upsert(deadlines, { onConflict: 'title' })
-}
-
-async function syncCandidates(supabase: any) {
-  // Enhanced candidate data with INEC verification
-  const { data: presidentialRace } = await supabase
-    .from('races')
-    .select('id')
-    .eq('type', 'presidential')
-    .maybeSingle()
-
-  const { data: lagosGovRace } = await supabase
-    .from('races')
-    .select('id')
-    .eq('type', 'gubernatorial')
-    .eq('state', 'Lagos')
-    .maybeSingle()
-
-  const mockCandidates = [
-    // Presidential candidates
-    {
-      name: 'Dr. Amina Ibrahim',
-      party: 'All Progressives Congress (APC)',
-      race_id: presidentialRace?.id,
-      age: 58,
-      occupation: 'Medical Doctor & Former Governor',
-      education: 'MBBS University of Lagos, MSc Public Health Harvard University',
-      experience: '12 years as Governor of Kano State, 8 years in Senate, 15 years medical practice',
-      manifesto: 'Healthcare reform, economic diversification, youth empowerment, and infrastructure development',
-      inec_candidate_id: 'INEC-PRES-2027-001',
-      avatar_url: '/placeholder-candidate-1.jpg',
-      status: 'active'
-    },
-    {
-      name: 'Engr. Chinedu Okafor',
-      party: 'Peoples Democratic Party (PDP)',
-      race_id: presidentialRace?.id,
-      age: 62,
-      occupation: 'Engineer & Former Minister',
-      education: 'B.Eng Mechanical Engineering University of Nigeria, MBA Business Administration',
-      experience: '8 years as Minister of Works, 6 years as State Commissioner, 20 years private sector',
-      manifesto: 'Infrastructure development, job creation, poverty alleviation, and technological advancement',
-      inec_candidate_id: 'INEC-PRES-2027-002',
-      avatar_url: '/placeholder-candidate-2.jpg',
-      status: 'active'
-    },
-    {
-      name: 'Barr. Fatima Mohammed',
-      party: 'Labour Party (LP)',
-      race_id: presidentialRace?.id,
-      age: 55,
-      occupation: 'Lawyer & Human Rights Activist',
-      education: 'LLB University of Abuja, LLM Human Rights Law, PhD Constitutional Law',
-      experience: '20 years legal practice, 10 years human rights advocacy, Former Attorney General',
-      manifesto: 'Rule of law, anti-corruption, women empowerment, and judicial reform',
-      inec_candidate_id: 'INEC-PRES-2027-003',
-      avatar_url: '/placeholder-candidate-3.jpg',
-      status: 'active'
-    },
-    {
-      name: 'Prof. Adebayo Williams',
-      party: 'New Nigeria Peoples Party (NNPP)',
-      race_id: presidentialRace?.id,
-      age: 60,
-      occupation: 'University Professor & Economist',
-      education: 'PhD Economics London School of Economics, BSc First Class University of Ibadan',
-      experience: '25 years academic career, Former Central Bank Deputy Governor, World Bank consultant',
-      manifesto: 'Economic transformation, education revolution, agricultural modernization',
-      inec_candidate_id: 'INEC-PRES-2027-004',
-      avatar_url: '/placeholder-candidate-4.jpg',
-      status: 'active'
-    }
-  ]
-
-  // Add Lagos gubernatorial candidates if race exists
-  if (lagosGovRace) {
-    mockCandidates.push(
-      {
-        name: 'Mr. Babajide Adeyemi',
-        party: 'All Progressives Congress (APC)',
-        race_id: lagosGovRace.id,
-        age: 50,
-        occupation: 'Businessman & Public Administrator',
-        education: 'B.Sc Economics University of Lagos, MBA Finance Harvard Business School',
-        experience: '4 years as Commissioner for Commerce, 10 years private sector experience',
-        manifesto: 'Lagos megacity development, technology hub expansion, smart city initiatives',
-        inec_candidate_id: 'INEC-LAG-GOV-2027-001',
-        avatar_url: '/placeholder-candidate-5.jpg',
-        status: 'active'
-      },
-      {
-        name: 'Dr. Funmilayo Olawale',
-        party: 'Peoples Democratic Party (PDP)',
-        race_id: lagosGovRace.id,
-        age: 48,
-        occupation: 'Physician & Public Health Specialist',
-        education: 'MBBS University of Ibadan, MPH Johns Hopkins, PhD Public Administration',
-        experience: '6 years healthcare administration, 5 years civil service, WHO consultant',
-        manifesto: 'Healthcare accessibility, education reform, urban planning, environmental sustainability',
-        inec_candidate_id: 'INEC-LAG-GOV-2027-002',
-        avatar_url: '/placeholder-candidate-6.jpg',
-        status: 'active'
-      },
-      {
-        name: 'Engr. Seun Adebayo',
-        party: 'Labour Party (LP)',
-        race_id: lagosGovRace.id,
-        age: 45,
-        occupation: 'Civil Engineer & Urban Planner',
-        education: 'B.Eng Civil Engineering University of Lagos, MSc Urban Planning',
-        experience: '15 years infrastructure development, Former Works Commissioner',
-        manifesto: 'Affordable housing, traffic decongestion, flood control, youth employment',
-        inec_candidate_id: 'INEC-LAG-GOV-2027-003',
-        avatar_url: '/placeholder-candidate-7.jpg',
-        status: 'active'
+      
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (i < maxRetries) {
+        const delay = Math.pow(2, i) * 1000;
+        console.log(`Network error, retrying in ${delay}ms...`, error);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
       }
-    )
-  }
-
-  let processed = 0
-  let created = 0
-  let updated = 0
-
-  for (const candidate of mockCandidates) {
-    if (!candidate.race_id) continue // Skip if no race found
-    
-    processed++
-    
-    const { data: existing } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('inec_candidate_id', candidate.inec_candidate_id)
-      .maybeSingle()
-
-    if (existing) {
-      await supabase
-        .from('candidates')
-        .update(candidate)
-        .eq('id', existing.id)
-      updated++
-    } else {
-      await supabase
-        .from('candidates')
-        .insert(candidate)
-      created++
     }
   }
-
-  return { processed, created, updated }
+  
+  throw lastError;
 }
 
-async function syncPollingUnits(supabase: any) {
-  // Mock polling unit data
-  const mockPollingUnits = [
-    {
-      name: 'Ikeja Primary School',
-      code: 'LA/IKJ/001',
-      state: 'Lagos',
-      lga: 'Ikeja',
-      ward: 'Ward 1',
-      address: 'Ikeja GRA, Lagos',
-      registered_voters: 1500,
-      inec_pu_id: 'PU001'
-    },
-    {
-      name: 'Victoria Island Community Center',
-      code: 'LA/VI/002',
-      state: 'Lagos',
-      lga: 'Lagos Island',
-      ward: 'Ward 2',
-      address: 'Victoria Island, Lagos',
-      registered_voters: 2200,
-      inec_pu_id: 'PU002'
-    }
-  ]
+function mapElectionType(dbType: string): string {
+  const typeMap: Record<string, string> = {
+    'presidential': 'presidential',
+    'gubernatorial': 'gubernatorial', 
+    'senatorial': 'senatorial',
+    'house_of_representatives': 'house_of_representatives',
+    'state_assembly': 'state_assembly',
+    'local_government': 'local_government',
+    'councilor': 'local_government'
+  };
+  return typeMap[dbType] || 'presidential';
+}
 
-  let processed = 0
-  let created = 0
-  let updated = 0
-
-  for (const pu of mockPollingUnits) {
-    processed++
-    
-    const { data: existing } = await supabase
-      .from('polling_units')
-      .select('id')
-      .eq('code', pu.code)
-      .single()
-
-    if (existing) {
-      await supabase
-        .from('polling_units')
-        .update(pu)
-        .eq('id', existing.id)
-      updated++
-    } else {
-      await supabase
-        .from('polling_units')
-        .insert(pu)
-      created++
-    }
-  }
-
-  return { processed, created, updated }
+function generateChecksum(data: any): string {
+  const encoder = new TextEncoder();
+  const dataString = JSON.stringify(data);
+  const hashBuffer = encoder.encode(dataString);
+  return btoa(String.fromCharCode(...new Uint8Array(hashBuffer))).slice(0, 16);
 }

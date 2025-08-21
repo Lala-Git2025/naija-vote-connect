@@ -1,14 +1,27 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-Deno.serve(async (req) => {
+interface NewsItem {
+  title: string;
+  content: string;
+  summary?: string;
+  source_name: string;
+  source_url?: string;
+  published_at: string;
+  category: string;
+  tags: string[];
+  is_verified: boolean;
+}
+
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -19,139 +32,154 @@ Deno.serve(async (req) => {
 
     console.log('Starting news sync')
 
-    // Create sync run record
+    // Start sync run record
     const { data: syncRun, error: syncError } = await supabase
       .from('sync_runs')
       .insert({
         provider: 'civic_feeds',
         sync_type: 'news',
         status: 'running',
-        metadata: { sources: ['premium_times', 'punch', 'guardian'], version: '1.0' }
+        started_at: new Date().toISOString(),
+        records_processed: 0,
+        records_created: 0,
+        records_updated: 0
       })
       .select()
       .single()
 
     if (syncError) {
-      console.error('Error creating sync run:', syncError)
+      console.error('Failed to create sync run:', syncError)
       throw syncError
     }
 
-    let recordsProcessed = 0
-    let recordsCreated = 0
-    let recordsUpdated = 0
+    let processed = 0;
+    let created = 0;
+    let errors: string[] = [];
 
     try {
-      // Mock news data - in production, this would fetch from RSS feeds
-      const mockNews = [
-        {
-          title: 'INEC Announces Voter Registration Extension',
-          content: 'The Independent National Electoral Commission has announced an extension of the continuous voter registration exercise to accommodate more eligible voters.',
-          summary: 'INEC extends voter registration deadline to increase participation.',
-          source_name: 'Premium Times',
-          source_url: 'https://premiumtimesng.com/news/elections',
-          published_at: new Date().toISOString(),
-          category: 'elections',
-          tags: ['INEC', 'voter-registration', 'elections'],
-          is_verified: true
-        },
-        {
-          title: 'Electoral Reforms Bill Passes Second Reading',
-          content: 'The National Assembly has passed the Electoral Act Amendment Bill for second reading, introducing new provisions for electronic transmission of results.',
-          summary: 'Electoral reforms advance in National Assembly with new technology provisions.',
-          source_name: 'The Guardian',
-          source_url: 'https://guardian.ng/politics/electoral-reforms',
-          published_at: new Date().toISOString(),
-          category: 'politics',
-          tags: ['electoral-reforms', 'national-assembly', 'technology'],
-          is_verified: true
-        },
-        {
-          title: 'Security Agencies Begin Election Preparations',
-          content: 'Security agencies across Nigeria have commenced preparations for the upcoming elections, with focus on ensuring peaceful conduct.',
-          summary: 'Security forces prepare comprehensive election security framework.',
-          source_name: 'Punch Newspapers',
-          source_url: 'https://punchng.com/security-election-prep',
-          published_at: new Date().toISOString(),
-          category: 'security',
-          tags: ['security', 'elections', 'preparation'],
-          is_verified: true
-        }
-      ]
+      // Get RSS feeds from environment variable
+      const rssFeeds = Deno.env.get('CIVIC_RSS')?.split(',') || [
+        'https://punchng.com/topics/elections/feed/',
+        'https://www.vanguardngr.com/category/politics/feed/',
+        'https://www.thisdaylive.com/index.php/category/politics/feed/'
+      ];
 
-      for (const newsItem of mockNews) {
-        recordsProcessed++
-        
-        const { data: existing } = await supabase
-          .from('news')
-          .select('id')
-          .eq('title', newsItem.title)
-          .eq('source_name', newsItem.source_name)
-          .single()
+      for (const feedUrl of rssFeeds) {
+        try {
+          console.log(`Fetching news from: ${feedUrl}`)
+          
+          // In production, this would parse RSS/XML feeds
+          const mockNewsItems: NewsItem[] = [
+            {
+              title: 'INEC Announces New Voter Registration Centers',
+              content: 'The Independent National Electoral Commission (INEC) has announced the establishment of additional voter registration centers across Lagos State to accommodate the increasing number of eligible voters seeking to register.',
+              summary: 'INEC expands voter registration infrastructure in Lagos State.',
+              source_name: 'The Nation',
+              source_url: 'https://thenationonlineng.net/inec-voter-registration',
+              published_at: new Date().toISOString(),
+              category: 'election',
+              tags: ['INEC', 'voter registration', 'Lagos'],
+              is_verified: true
+            },
+            {
+              title: 'Presidential Candidates Debate Schedule Released',
+              content: 'The Nigeria Election Debate Group (NEDG) and the Broadcasting Organisation of Nigeria (BON) have released the schedule for the 2027 presidential candidates debates.',
+              summary: 'Presidential debate schedule announced for 2027 elections.',
+              source_name: 'Premium Times',
+              source_url: 'https://www.premiumtimesng.com/debates-2027',
+              published_at: new Date().toISOString(),
+              category: 'candidate',
+              tags: ['presidential debate', '2027 elections', 'NEDG'],
+              is_verified: true
+            }
+          ];
 
-        if (existing) {
-          await supabase
-            .from('news')
-            .update(newsItem)
-            .eq('id', existing.id)
-          recordsUpdated++
-        } else {
-          await supabase
-            .from('news')
-            .insert(newsItem)
-          recordsCreated++
+          for (const item of mockNewsItems) {
+            processed++;
+            
+            const { error } = await supabase
+              .from('news')
+              .upsert({
+                title: item.title,
+                content: item.content,
+                summary: item.summary,
+                source_name: item.source_name,
+                source_url: item.source_url,
+                published_at: item.published_at,
+                category: item.category,
+                tags: item.tags,
+                is_verified: item.is_verified
+              }, { onConflict: 'title,source_name' })
+
+            if (error) {
+              errors.push(`News error: ${error.message}`)
+            } else {
+              created++
+            }
+          }
+          
+        } catch (feedError) {
+          errors.push(`Feed error (${feedUrl}): ${feedError.message}`)
         }
       }
 
-      // Update sync run as completed
+      // Update sync run with results
       await supabase
         .from('sync_runs')
         .update({
-          status: 'completed',
+          status: errors.length === 0 ? 'completed' : 'failed',
           completed_at: new Date().toISOString(),
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          records_processed: processed,
+          records_created: created,
+          records_updated: 0,
+          error_message: errors.length > 0 ? errors.join('; ') : null,
+          metadata: {
+            feeds_processed: rssFeeds.length,
+            errors: errors
+          }
         })
         .eq('id', syncRun.id)
 
-      console.log(`News sync completed: ${recordsProcessed} processed, ${recordsCreated} created, ${recordsUpdated} updated`)
+      console.log(`News sync completed: processed ${processed}, created ${created}`)
 
       return new Response(
         JSON.stringify({
-          success: true,
-          sync_run_id: syncRun.id,
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          success: errors.length === 0,
+          processed,
+          created,
+          updated: 0,
+          errors
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
       )
 
-    } catch (error) {
-      // Update sync run as failed
+    } catch (syncError) {
+      console.error('News sync failed:', syncError)
+      
+      // Update sync run with error
       await supabase
         .from('sync_runs')
         .update({
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error_message: error.message,
-          records_processed: recordsProcessed,
-          records_created: recordsCreated,
-          records_updated: recordsUpdated
+          error_message: syncError.message
         })
         .eq('id', syncRun.id)
 
-      throw error
+      throw syncError
     }
 
   } catch (error) {
     console.error('News sync error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      },
     )
   }
 })

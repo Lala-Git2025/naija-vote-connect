@@ -28,14 +28,30 @@ interface HealthStatus {
   lastChecked: string;
 }
 
+interface DatasetCounts {
+  elections: number;
+  candidates: number;
+  polling_units: number;
+  news: number;
+  fact_checks: number;
+}
+
 export default function Admin() {
   const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [healthStatuses, setHealthStatuses] = useState<HealthStatus[]>([]);
+  const [datasetCounts, setDatasetCounts] = useState<DatasetCounts>({
+    elections: 0,
+    candidates: 0,
+    polling_units: 0,
+    news: 0,
+    fact_checks: 0
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSyncRuns();
     fetchHealthStatuses();
+    fetchDatasetCounts();
   }, []);
 
   const fetchSyncRuns = async () => {
@@ -63,6 +79,28 @@ export default function Admin() {
       lastChecked: new Date().toISOString()
     }));
     setHealthStatuses(statuses);
+  };
+
+  const fetchDatasetCounts = async () => {
+    try {
+      const [electionsRes, candidatesRes, pollingUnitsRes, newsRes, factChecksRes] = await Promise.all([
+        supabase.from('elections').select('*', { count: 'exact', head: true }),
+        supabase.from('candidates').select('*', { count: 'exact', head: true }),
+        supabase.from('polling_units').select('*', { count: 'exact', head: true }),
+        supabase.from('news').select('*', { count: 'exact', head: true }),
+        supabase.from('fact_checks').select('*', { count: 'exact', head: true })
+      ]);
+
+      setDatasetCounts({
+        elections: electionsRes.count || 0,
+        candidates: candidatesRes.count || 0,
+        polling_units: pollingUnitsRes.count || 0,
+        news: newsRes.count || 0,
+        fact_checks: factChecksRes.count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching dataset counts:', error);
+    }
   };
 
   const triggerSync = async (syncType: string, provider: string) => {
@@ -148,7 +186,7 @@ export default function Admin() {
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2</div>
+                <div className="text-2xl font-bold">{datasetCounts.elections}</div>
                 <p className="text-xs text-muted-foreground">Active elections</p>
               </CardContent>
             </Card>
@@ -159,7 +197,7 @@ export default function Admin() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">156</div>
+                <div className="text-2xl font-bold">{datasetCounts.candidates}</div>
                 <p className="text-xs text-muted-foreground">Registered candidates</p>
               </CardContent>
             </Card>
@@ -170,7 +208,7 @@ export default function Admin() {
                 <MapPin className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,243</div>
+                <div className="text-2xl font-bold">{datasetCounts.polling_units}</div>
                 <p className="text-xs text-muted-foreground">Total polling units</p>
               </CardContent>
             </Card>
@@ -181,8 +219,8 @@ export default function Admin() {
                 <Newspaper className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">89</div>
-                <p className="text-xs text-muted-foreground">Published this week</p>
+                <div className="text-2xl font-bold">{datasetCounts.news}</div>
+                <p className="text-xs text-muted-foreground">Total news items</p>
               </CardContent>
             </Card>
           </div>

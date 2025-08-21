@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import PersonalizedDashboard from "@/components/PersonalizedDashboard";
+import SyncStatus from "@/components/SyncStatus";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -53,6 +54,9 @@ const Index = () => {
       <Header />
       <main>
         {hasOnboarded ? <PersonalizedDashboard /> : <Hero />}
+        <div className="container mx-auto px-4 py-2">
+          <SyncStatus provider="inec_api" className="justify-center" />
+        </div>
       </main>
       <Footer />
     </div>
