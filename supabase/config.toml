@@ -72,6 +72,32 @@ verify_jwt = false
 [functions.sync-fact-checks]
 verify_jwt = false
 
+# Cron job schedules
+# Every 6 hours for INEC data
+select cron.schedule('sync-inec-timetables', '0 */6 * * *', $$
+  select net.http_post(
+    url:='https://cjyjfxeeyumstsfsknyb.supabase.co/functions/v1/sync-inec-data',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqeWpmeGVleXVtc3RzZnNrbnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1Njk0NzMsImV4cCI6MjA3MTE0NTQ3M30.Z4XQ305Ky_Yn1Cy3KF6bOrg90mXVnN4nvBgobSxO424"}'::jsonb,
+    body:='{"sync_type": "elections_and_deadlines"}'::jsonb
+  ) as request_id;
+$$);
+
+# Every 30 minutes for news
+select cron.schedule('sync-news', '*/30 * * * *', $$
+  select net.http_post(
+    url:='https://cjyjfxeeyumstsfsknyb.supabase.co/functions/v1/sync-news',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqeWpmeGVleXVtc3RzZnNrbnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1Njk0NzMsImV4cCI6MjA3MTE0NTQ3M30.Z4XQ305Ky_Yn1Cy3KF6bOrg90mXVnN4nvBgobSxO424"}'::jsonb
+  ) as request_id;
+$$);
+
+# Every 30 minutes for fact checks  
+select cron.schedule('sync-fact-checks', '*/30 * * * *', $$
+  select net.http_post(
+    url:='https://cjyjfxeeyumstsfsknyb.supabase.co/functions/v1/sync-fact-checks',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqeWpmeGVleXVtc3RzZnNrbnliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1Njk0NzMsImV4cCI6MjA3MTE0NTQ3M30.Z4XQ305Ky_Yn1Cy3KF6bOrg90mXVnN4nvBgobSxO424"}'::jsonb
+  ) as request_id;
+$$);
+
 [edge-runtime]
 policy = "per_worker"
 inspector_port = 8083

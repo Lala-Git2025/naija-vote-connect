@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Bell, Clock, MapPin, Users, AlertCircle, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { useElections, useCandidates, useDeadlines } from "@/hooks/useElectionData";
+import { useSupabaseElections, useSupabaseCandidates, useSupabaseDeadlines, useSupabaseNews } from "@/hooks/useSupabaseElectionData";
 import FaceAwareHero from "@/components/FaceAwareHero";
 
 const PersonalizedDashboard = () => {
   const navigate = useNavigate();
-  const { data: elections } = useElections();
-  const { data: candidates } = useCandidates();
-  const { data: deadlines } = useDeadlines();
+  const { data: elections } = useSupabaseElections();
+  const { data: candidates } = useSupabaseCandidates();
+  const { data: deadlines } = useSupabaseDeadlines();
+  const { data: news } = useSupabaseNews(3);
 
   const [notifications, setNotifications] = useState([
     { id: 1, title: "Election Registration Reminder", message: "Last 3 days to register for Lagos State elections", type: "urgent", time: "2 hours ago" },
@@ -19,9 +20,14 @@ const PersonalizedDashboard = () => {
     { id: 3, title: "Polling Unit Change", message: "Your polling unit has been updated", type: "warning", time: "1 day ago" }
   ]);
 
-  const upcomingElections = elections?.data?.filter(election => 
+  const upcomingElections = elections?.filter(election => 
     election.status === 'upcoming'
-  ).slice(0, 3) || [
+  ).slice(0, 3).map(election => ({
+    ...election,
+    title: election.name,
+    daysLeft: Math.ceil((new Date(election.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+    location: "Your registered location"
+  })) || [
     {
       id: "ng-2027-pres",
       title: "Presidential Election",
@@ -34,12 +40,24 @@ const PersonalizedDashboard = () => {
     }
   ];
 
-  const featuredCandidates = candidates?.data?.slice(0, 3) || [];
-  const upcomingDeadlines = deadlines?.data?.slice(0, 3) || [
+  const featuredCandidates = candidates?.slice(0, 3) || [];
+  const upcomingDeadlines = deadlines?.slice(0, 3).map(deadline => ({
+    ...deadline,
+    daysLeft: Math.ceil((new Date(deadline.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+    priority: deadline.importance
+  })) || [
     { id: "1", title: "Voter Registration Closes", date: "Jan 15, 2027", daysLeft: 90, priority: "high" }
   ];
 
-  const candidateHighlights = [
+  const candidateHighlights = featuredCandidates.length > 0 ? featuredCandidates.map(candidate => ({
+    name: candidate.name,
+    party: candidate.party,
+    office: `${candidate.positions[0]?.category || 'Political'} Candidate`,
+    image: candidate.photo || "/placeholder.svg",
+    verified: candidate.inecVerified,
+    keyPolicies: candidate.positions.slice(0, 2).map(p => p.issue) || ["Policy Reform"],
+    recentUpdate: news?.[0]?.title || "Campaign updates available"
+  })) : [
     {
       name: "Dr. Amina Hassan",
       party: "Progressive Alliance",
@@ -108,30 +126,30 @@ const PersonalizedDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-gradient-hero text-primary-foreground">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">3</div>
-              <div className="text-sm opacity-90">Upcoming Elections</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-secondary text-secondary-foreground">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">365</div>
-              <div className="text-sm opacity-90">Days to Vote</div>
-            </CardContent>
-          </Card>
+            <Card className="bg-gradient-hero text-primary-foreground">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold">{upcomingElections.length}</div>
+                <div className="text-sm opacity-90">Upcoming Elections</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-secondary text-secondary-foreground">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold">{upcomingElections[0]?.daysLeft || 0}</div>
+                <div className="text-sm opacity-90">Days to Vote</div>
+              </CardContent>
+            </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-success">✓</div>
               <div className="text-sm text-muted-foreground">Registration Complete</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">8</div>
-              <div className="text-sm text-muted-foreground">Candidates Tracked</div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold">{candidates?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Candidates Available</div>
+              </CardContent>
+            </Card>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">

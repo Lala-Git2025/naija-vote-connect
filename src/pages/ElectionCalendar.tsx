@@ -11,14 +11,44 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useSupabaseElections, useSupabaseDeadlines } from "@/hooks/useSupabaseElectionData";
 
 const ElectionCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'calendar' | 'timeline'>('calendar');
   const [filterType, setFilterType] = useState('all');
 
-  // Mock election events data
-  const events = [
+  const { data: elections, isLoading: electionsLoading } = useSupabaseElections();
+  const { data: deadlines, isLoading: deadlinesLoading } = useSupabaseDeadlines();
+
+  // Convert Supabase data to calendar events
+  const supabaseEvents = [
+    ...(elections || []).map(election => ({
+      id: election.id,
+      title: election.name,
+      date: new Date(election.date),
+      time: "8:00 AM",
+      type: "election" as const,
+      priority: "high" as const,
+      location: "Nationwide",
+      description: election.description || `${election.type} election`,
+      status: "upcoming" as const
+    })),
+    ...(deadlines || []).map(deadline => ({
+      id: deadline.id,
+      title: deadline.title,
+      date: new Date(deadline.date),
+      time: "11:59 PM",
+      type: "deadline" as const,
+      priority: deadline.importance as "high" | "medium" | "low",
+      location: deadline.state || "Nationwide",
+      description: deadline.description,
+      status: "upcoming" as const
+    }))
+  ];
+
+  // Mock election events data for fallback
+  const mockEvents = [
     {
       id: "1",
       title: "Voter Registration Deadline",
@@ -87,7 +117,8 @@ const ElectionCalendar = () => {
     }
   ];
 
-  const filteredEvents = events.filter(event => {
+  const allEvents = supabaseEvents.length > 0 ? supabaseEvents : mockEvents;
+  const filteredEvents = allEvents.filter(event => {
     if (filterType === 'all') return true;
     return event.type === filterType;
   });

@@ -13,6 +13,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
+import { useSupabaseCandidates, useSupabaseRaces } from "@/hooks/useSupabaseElectionData";
 
 const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,8 +21,11 @@ const Candidates = () => {
   const [filterState, setFilterState] = useState("all");
   const [sortBy, setSortBy] = useState("name");
 
-  // Mock candidates data
-  const candidates = [
+  const { data: candidates, isLoading } = useSupabaseCandidates();
+  const { data: races } = useSupabaseRaces();
+
+  // Mock candidates data for fallback
+  const mockCandidates = [
     {
       id: "1",
       name: "Dr. Amina Hassan",
@@ -137,10 +141,28 @@ const Candidates = () => {
     { value: "assembly", label: "State Assembly" }
   ];
 
-  const filteredCandidates = candidates.filter(candidate => {
+  // Normalize candidate data to handle both Supabase and mock data types
+  const normalizeCandidate = (candidate: any) => ({
+    ...candidate,
+    position: candidate.position || `${candidate.positions?.[0]?.category || 'Political'} Candidate`,
+    state: candidate.state || candidate.races?.[0] || 'Nigeria',
+    keyIssues: candidate.keyIssues || candidate.positions?.slice(0, 3).map((p: any) => p.issue) || ['Policy Reform'],
+    approvalRating: candidate.approvalRating || 70,
+    endorsements: candidate.endorsements?.length || candidate.endorsements || 0,
+    image: candidate.image || candidate.photo || '👤',
+    verified: candidate.verified !== undefined ? candidate.verified : candidate.inecVerified,
+    campaignPromise: candidate.campaignPromise || candidate.biography || 'Working for the people',
+    age: candidate.age,
+    education: candidate.education || 'Education details available',
+    experience: candidate.experience || 'Experience details available'
+  });
+
+  const candidatesData = candidates?.map(normalizeCandidate) || mockCandidates.map(normalizeCandidate);
+  const filteredCandidates = candidatesData.filter(candidate => {
+    const keyIssuesArray = Array.isArray(candidate.keyIssues) ? candidate.keyIssues : [candidate.keyIssues];
     const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.party.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         candidate.keyIssues.some(issue => issue.toLowerCase().includes(searchTerm.toLowerCase()));
+                         keyIssuesArray.some((issue: string) => issue.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesPosition = filterPosition === "all" || 
                            candidate.position.toLowerCase().includes(filterPosition.toLowerCase());
@@ -152,9 +174,11 @@ const Candidates = () => {
   }).sort((a, b) => {
     switch (sortBy) {
       case 'approval':
-        return b.approvalRating - a.approvalRating;
+        return (b.approvalRating || 0) - (a.approvalRating || 0);
       case 'endorsements':
-        return b.endorsements - a.endorsements;
+        const aEndorsements = typeof a.endorsements === 'number' ? a.endorsements : 0;
+        const bEndorsements = typeof b.endorsements === 'number' ? b.endorsements : 0;
+        return bEndorsements - aEndorsements;
       case 'name':
       default:
         return a.name.localeCompare(b.name);
@@ -241,8 +265,25 @@ const Candidates = () => {
         </div>
 
         {/* Candidates Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCandidates.map(candidate => (
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4"></div>
+                  <div className="h-4 bg-muted rounded w-3/4 mx-auto mb-2"></div>
+                  <div className="h-3 bg-muted rounded w-1/2 mx-auto"></div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="h-3 bg-muted rounded"></div>
+                  <div className="h-3 bg-muted rounded w-4/5"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCandidates.map(candidate => (
             <Card key={candidate.id} className="shadow-card hover:shadow-elevated transition-all duration-200">
               <CardHeader>
                 <div className="flex items-start space-x-4">
@@ -276,6 +317,11 @@ const Candidates = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">{candidate.party}</Badge>
+                  {candidate.verified && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+                      INEC Verified
+                    </Badge>
+                  )}
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <MapPin className="w-3 h-3" />
                     <span>{candidate.state}</span>
@@ -283,24 +329,26 @@ const Candidates = () => {
                 </div>
                 
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Age: {candidate.age}</span>
-                  </div>
+                  {candidate.age && (
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Age: {candidate.age}</span>
+                    </div>
+                  )}
                   <div className="flex items-start space-x-2">
                     <GraduationCap className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <span className="text-muted-foreground">{candidate.education}</span>
+                    <span className="text-muted-foreground">{Array.isArray(candidate.education) ? candidate.education[0] : candidate.education}</span>
                   </div>
                   <div className="flex items-start space-x-2">
                     <Briefcase className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <span className="text-muted-foreground">{candidate.experience}</span>
+                    <span className="text-muted-foreground">{Array.isArray(candidate.experience) ? candidate.experience[0] : candidate.experience}</span>
                   </div>
                 </div>
                 
                 <div>
                   <h3 className="font-medium text-foreground mb-2 text-sm">Key Issues:</h3>
                   <div className="flex flex-wrap gap-1">
-                    {candidate.keyIssues.map((issue, index) => (
+                    {(Array.isArray(candidate.keyIssues) ? candidate.keyIssues : [candidate.keyIssues]).map((issue, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {issue}
                       </Badge>
@@ -317,11 +365,11 @@ const Candidates = () => {
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-1">
                     <Star className="w-4 h-4 text-warning fill-current" />
-                    <span className="font-medium">{candidate.approvalRating}%</span>
+                    <span className="font-medium">{candidate.approvalRating || 70}%</span>
                     <span className="text-muted-foreground">approval</span>
                   </div>
                   <div className="text-muted-foreground">
-                    {candidate.endorsements} endorsements
+                    {typeof candidate.endorsements === 'number' ? candidate.endorsements : 0} endorsements
                   </div>
                 </div>
                 
@@ -335,8 +383,9 @@ const Candidates = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* No Results */}
         {filteredCandidates.length === 0 && (
