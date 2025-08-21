@@ -12,11 +12,13 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useSupabaseElections, useSupabaseDeadlines } from "@/hooks/useSupabaseElectionData";
+import { DataSyncButton } from "@/components/DataSyncButton";
 
 const ElectionCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'calendar' | 'timeline'>('calendar');
   const [filterType, setFilterType] = useState('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming'>('all');
 
   const { data: elections, isLoading: electionsLoading } = useSupabaseElections();
   const { data: deadlines, isLoading: deadlinesLoading } = useSupabaseDeadlines();
@@ -118,9 +120,26 @@ const ElectionCalendar = () => {
   ];
 
   const allEvents = supabaseEvents.length > 0 ? supabaseEvents : mockEvents;
+  
+  // Apply both type and time filters
   const filteredEvents = allEvents.filter(event => {
-    if (filterType === 'all') return true;
-    return event.type === filterType;
+    // Type filter
+    if (filterType !== 'all' && event.type !== filterType) return false;
+    
+    // Time filter
+    const today = new Date();
+    const eventDate = new Date(event.date);
+    
+    if (timeFilter === 'past' && eventDate >= today) return false;
+    if (timeFilter === 'upcoming' && eventDate < today) return false;
+    
+    return true;
+  }).sort((a, b) => {
+    // Sort by date - past events in descending order, future in ascending
+    if (timeFilter === 'past') {
+      return b.date.getTime() - a.date.getTime();
+    }
+    return a.date.getTime() - b.date.getTime();
   });
 
   const getEventTypeColor = (type: string) => {
@@ -204,9 +223,24 @@ END:VCALENDAR`;
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Election Calendar</h1>
             <p className="text-muted-foreground">Stay updated with important election dates and deadlines</p>
+            <div className="mt-2">
+              <DataSyncButton syncType="elections" size="sm" />
+            </div>
           </div>
           
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
+            <Select value={timeFilter} onValueChange={(value) => setTimeFilter(value as 'all' | 'past' | 'upcoming')}>
+              <SelectTrigger className="w-36">
+                <Clock className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Time filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="past">Past Events</SelectItem>
+              </SelectContent>
+            </Select>
+            
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-48">
                 <Filter className="w-4 h-4 mr-2" />
