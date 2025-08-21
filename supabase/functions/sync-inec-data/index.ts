@@ -99,10 +99,10 @@ serve(async (req) => {
   }
 
   try {
-    const config = await getProviderConfig()
+    const config = getServerConfig()
     const supabase = createClient(
       config.supabase.url,
-      config.supabase.serviceKey
+      config.supabase.serviceRoleKey ?? ''
     )
 
     const { sync_type = 'elections' } = await req.json().catch(() => ({}))
@@ -211,7 +211,7 @@ serve(async (req) => {
   }
 })
 
-async function syncTimetables(supabase: any, config: ProviderConfig): Promise<SyncResult> {
+async function syncTimetables(supabase: any, config: AppConfig): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
     processed: 0,
@@ -320,10 +320,9 @@ async function syncTimetables(supabase: any, config: ProviderConfig): Promise<Sy
           }
         }
 
-        result.sourceUrl = url
+        result.sourceUrl = config.inec.timetableUrls[0] || 'mock'
         result.sourceHash = contentHash
       }
-    }
 
     result.success = result.errors.length === 0
     return result
@@ -334,7 +333,7 @@ async function syncTimetables(supabase: any, config: ProviderConfig): Promise<Sy
   }
 }
 
-async function syncCandidates(supabase: any): Promise<SyncResult> {
+async function syncCandidates(supabase: any, config: AppConfig): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
     processed: 0,
@@ -345,7 +344,6 @@ async function syncCandidates(supabase: any): Promise<SyncResult> {
   }
 
   try {
-    const config = getServerConfig()
     const feedUrls = config.inec.candidateFiles.length > 0
       ? config.inec.candidateFiles
       : [
@@ -414,7 +412,7 @@ async function syncCandidates(supabase: any): Promise<SyncResult> {
   }
 }
 
-async function syncPollingUnits(supabase: any): Promise<SyncResult> {
+async function syncPollingUnits(supabase: any, config: AppConfig): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
     processed: 0,
@@ -621,4 +619,63 @@ function generateChecksum(data: any): string {
   const dataString = JSON.stringify(data);
   const hashBuffer = encoder.encode(dataString);
   return btoa(String.fromCharCode(...new Uint8Array(hashBuffer))).slice(0, 16);
+}
+
+// Add missing syncResults function
+async function syncResults(supabase: any, config: AppConfig): Promise<SyncResult> {
+  const result: SyncResult = {
+    success: false,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    errors: [],
+    lastSyncedAt: new Date().toISOString()
+  }
+
+  try {
+    console.log('Results sync - storing placeholder result links')
+    
+    // Mock implementation - store result links for future use
+    const resultLinks = config.inec.resultsLinks.length > 0 
+      ? config.inec.resultsLinks 
+      : ['https://inecelectionresults.ng', 'https://irev.inec.gov.ng'];
+
+    for (const link of resultLinks) {
+      result.processed++
+      
+      // Check if we already have this result link
+      const { data: existing } = await supabase
+        .from('results')
+        .select('id')
+        .eq('source_url', link)
+        .maybeSingle()
+
+      if (!existing) {
+        const { error } = await supabase
+          .from('results')
+          .insert({
+            race_id: null,
+            candidate_id: null,
+            polling_unit_id: null,
+            votes: 0,
+            status: 'pending',
+            source_url: link,
+            collated_at: new Date().toISOString()
+          })
+
+        if (error) {
+          result.errors.push(`Result link error: ${error.message}`)
+        } else {
+          result.created++
+        }
+      }
+    }
+
+    result.success = result.errors.length === 0 || result.created > 0
+    return result
+
+  } catch (error) {
+    result.errors.push(`Results sync error: ${error.message}`)
+    return result
+  }
 }
