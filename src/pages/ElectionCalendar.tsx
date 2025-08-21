@@ -32,7 +32,7 @@ const ElectionCalendar = () => {
       priority: "high" as const,
       location: "Nationwide",
       description: election.description || `${election.type} election`,
-      status: "upcoming" as const
+      status: election.status as "upcoming" | "completed" | "cancelled"
     })),
     ...(deadlines || []).map(deadline => ({
       id: deadline.id,
@@ -41,7 +41,7 @@ const ElectionCalendar = () => {
       time: "11:59 PM",
       type: "deadline" as const,
       priority: deadline.importance as "high" | "medium" | "low",
-      location: deadline.state || "Nationwide",
+      location: "Nationwide",
       description: deadline.description,
       status: "upcoming" as const
     }))
