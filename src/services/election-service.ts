@@ -8,6 +8,7 @@ import { ManualInecProvider } from '@/services/providers/manual-inec-provider';
 import { CivicFeedsProvider } from '@/services/providers/civic-feeds-provider';
 import { FactCheckProvider } from '@/services/providers/fact-check-provider';
 import { syncService } from '@/services/sync-service';
+import { dataOrchestrator } from '@/services/data-orchestrator';
 
 // Initialize data providers
 export function initializeDataProviders() {
@@ -39,3 +40,7 @@ initializeDataProviders();
 // Start automated sync service
 console.log('Starting automated sync service...');
 syncService.start();
+
+// Start comprehensive data integration
+console.log('Starting comprehensive data integration...');
+dataOrchestrator.performIncrementalSync(['inec', 'dubawa']);
