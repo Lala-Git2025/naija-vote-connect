@@ -291,28 +291,28 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Database className="h-5 w-5" />
-                  <span>INEC Data</span>
+                  <span>Real INEC Data</span>
                 </CardTitle>
-                <CardDescription>Elections, candidates, and polling units</CardDescription>
+                <CardDescription>Live data from inecnigeria.org</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
-                  onClick={() => triggerSync('elections', 'inec_api')}
+                  onClick={() => triggerSync('elections', 'inec_native')}
                   disabled={loading}
                   className="w-full"
                 >
-                  Sync Elections
+                  Sync INEC Elections
                 </Button>
                 <Button 
-                  onClick={() => triggerSync('candidates', 'inec_api')}
+                  onClick={() => triggerSync('candidates', 'inec_native')}
                   disabled={loading}
                   className="w-full"
                   variant="outline"
                 >
-                  Sync Candidates
+                  Sync INEC Candidates
                 </Button>
                 <Button 
-                  onClick={() => triggerSync('polling_units', 'inec_api')}
+                  onClick={() => triggerSync('polling_units', 'inec_native')}
                   disabled={loading}
                   className="w-full"
                   variant="outline"
@@ -320,12 +320,12 @@ export default function Admin() {
                   Sync Polling Units
                 </Button>
                 <Button 
-                  onClick={() => triggerSync('results', 'inec_api')}
+                  onClick={() => triggerSync('results', 'inec_native')}
                   disabled={loading}
                   className="w-full"
                   variant="outline"
                 >
-                  Sync Results
+                  Sync Results Links
                 </Button>
               </CardContent>
             </Card>
