@@ -374,27 +374,43 @@ async function syncCandidates(supabase: any, config: AppConfig): Promise<SyncRes
             .eq('name', candidate.race_name)
             .maybeSingle()
 
-          if (race) {
-            const { error } = await supabase
-              .from('candidates')
-              .upsert({
-                name: candidate.name,
-                party: candidate.party,
-                race_id: race.id,
-                age: candidate.age,
-                occupation: candidate.occupation,
-                education: candidate.education,
-                inec_candidate_id: candidate.inec_candidate_id,
-                status: 'active'
-              }, { onConflict: 'inec_candidate_id' })
+          let raceId = race?.id
+          if (!raceId) {
+            // Create race if it doesn't exist yet
+            const inferredType = inferRaceType(candidate.race_name)
+            const { data: newRace, error: raceError } = await supabase
+              .from('races')
+              .insert({
+                name: candidate.race_name,
+                type: inferredType
+              })
+              .select('id')
+              .single()
 
-            if (error) {
-              result.errors.push(`Candidate error: ${error.message}`)
-            } else {
-              result.created++
+            if (raceError) {
+              result.errors.push(`Race create error (${candidate.race_name}): ${raceError.message}`)
+              continue
             }
+            raceId = newRace.id
+          }
+
+          const { error } = await supabase
+            .from('candidates')
+            .upsert({
+              name: candidate.name,
+              party: candidate.party,
+              race_id: raceId,
+              age: candidate.age,
+              occupation: candidate.occupation,
+              education: candidate.education,
+              inec_candidate_id: candidate.inec_candidate_id,
+              status: 'active'
+            }, { onConflict: 'inec_candidate_id' })
+
+          if (error) {
+            result.errors.push(`Candidate error: ${error.message}`)
           } else {
-            result.errors.push(`Race not found: ${candidate.race_name}`)
+            result.created++
           }
         }
         
@@ -612,6 +628,16 @@ function mapElectionType(dbType: string): string {
     'councilor': 'local_government'
   };
   return typeMap[dbType] || 'presidential';
+}
+
+function inferRaceType(raceName: string): string {
+  const name = raceName.toLowerCase()
+  if (name.includes('president')) return 'presidential'
+  if (name.includes('governor') || name.includes('gubernatorial')) return 'gubernatorial'
+  if (name.includes('senate') || name.includes('senator')) return 'senatorial'
+  if (name.includes('house of representatives') || name.includes('representatives')) return 'house_of_representatives'
+  if (name.includes('state assembly') || name.includes('house of assembly')) return 'state_assembly'
+  return 'presidential'
 }
 
 function generateChecksum(data: any): string {

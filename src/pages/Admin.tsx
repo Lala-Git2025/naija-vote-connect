@@ -113,6 +113,9 @@ export default function Admin() {
         case 'polling_units':
           functionName = 'sync-inec-data';
           break;
+        case 'results':
+          functionName = 'sync-inec-results';
+          break;
         case 'news':
           functionName = 'sync-news';
           break;
@@ -315,6 +318,14 @@ export default function Admin() {
                   variant="outline"
                 >
                   Sync Polling Units
+                </Button>
+                <Button 
+                  onClick={() => triggerSync('results', 'inec_api')}
+                  disabled={loading}
+                  className="w-full"
+                  variant="outline"
+                >
+                  Sync Results
                 </Button>
               </CardContent>
             </Card>
