@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,24 @@ const Candidates = () => {
 
   const { data: candidates, isLoading } = useSupabaseCandidates();
   const { data: races } = useSupabaseRaces();
+
+  // State normalization helpers
+  const toSlug = (s?: string) => (s || '').trim().toLowerCase();
+  const stateList = [
+    'abia','adamawa','akwa ibom','anambra','bauchi','bayelsa','benue','borno','cross river','delta','ebonyi','edo','ekiti','enugu','fct','gombe','imo','jigawa','kaduna','kano','katsina','kebbi','kogi','kwara','lagos','nasarawa','niger','ogun','ondo','osun','oyo','plateau','rivers','sokoto','taraba','yobe','zamfara'
+  ].map(toSlug);
+  const parseStateFromText = (text?: string | null) => {
+    const t = toSlug(text || '');
+    const match = stateList.find(st => t.includes(st));
+    return match || '';
+  };
+
+  // Map race id to race
+  const raceMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; state?: string }>();
+    (races || []).forEach(r => map.set(r.id, r as any));
+    return map;
+  }, [races]);
 
   // Get last sync time for display
   const getLastCandidateSync = () => {
@@ -149,20 +167,26 @@ const Candidates = () => {
   ];
 
   // Normalize candidate data to handle both Supabase and mock data types
-  const normalizeCandidate = (candidate: any) => ({
-    ...candidate,
-    position: candidate.position || `${candidate.positions?.[0]?.category || 'Political'} Candidate`,
-    state: candidate.state || candidate.races?.[0] || 'Nigeria',
-    keyIssues: candidate.keyIssues || candidate.positions?.slice(0, 3).map((p: any) => p.issue) || ['Policy Reform'],
-    approvalRating: candidate.approvalRating || 70,
-    endorsements: candidate.endorsements?.length || candidate.endorsements || 0,
-    image: candidate.image || candidate.photo || '👤',
-    verified: candidate.verified !== undefined ? candidate.verified : candidate.inecVerified,
-    campaignPromise: candidate.campaignPromise || candidate.biography || 'Working for the people',
-    age: candidate.age,
-    education: candidate.education || 'Education details available',
-    experience: candidate.experience || 'Experience details available'
-  });
+  const normalizeCandidate = (candidate: any) => {
+    const raceId = Array.isArray(candidate.races) ? candidate.races[0] : undefined;
+    const race = raceId ? raceMap.get(raceId) : undefined;
+    const derivedState = candidate.state || race?.state || parseStateFromText(race?.name || '');
+
+    return {
+      ...candidate,
+      position: candidate.position || `${candidate.positions?.[0]?.category || 'Political'} Candidate`,
+      state: toSlug(derivedState) || '',
+      keyIssues: Array.isArray(candidate.keyIssues) ? candidate.keyIssues : (candidate.positions?.slice(0, 3).map((p: any) => p.issue) || ['Policy Reform']),
+      approvalRating: candidate.approvalRating || 70,
+      endorsements: typeof candidate.endorsements === 'number' ? candidate.endorsements : (candidate.endorsements?.length || 0),
+      image: candidate.image || candidate.photo || '👤',
+      verified: candidate.verified !== undefined ? candidate.verified : candidate.inecVerified,
+      campaignPromise: candidate.campaignPromise || candidate.biography || 'Working for the people',
+      age: candidate.age,
+      education: candidate.education || 'Education details available',
+      experience: candidate.experience || 'Experience details available'
+    };
+  };
 
   const candidatesData = candidates?.map(normalizeCandidate) || mockCandidates.map(normalizeCandidate);
   const filteredCandidates = candidatesData.filter(candidate => {
@@ -174,8 +198,7 @@ const Candidates = () => {
     const matchesPosition = filterPosition === "all" || 
                            candidate.position.toLowerCase().includes(filterPosition.toLowerCase());
     
-    const matchesState = filterState === "all" || 
-                        candidate.state.toLowerCase() === filterState.toLowerCase();
+    const matchesState = filterState === "all" || (candidate.state && candidate.state === filterState);
     
     return matchesSearch && matchesPosition && matchesState;
   }).sort((a, b) => {

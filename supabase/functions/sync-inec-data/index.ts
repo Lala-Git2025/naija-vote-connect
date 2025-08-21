@@ -379,7 +379,7 @@ async function syncCandidates(supabase: any, config: AppConfig): Promise<SyncRes
           // Find or create race
           const { data: race } = await supabase
             .from('races')
-            .select('id')
+            .select('id, state')
             .eq('name', candidate.race_name)
             .maybeSingle()
 
@@ -391,7 +391,8 @@ async function syncCandidates(supabase: any, config: AppConfig): Promise<SyncRes
               .from('races')
               .insert({
                 name: candidate.race_name,
-                type: inferredType
+                type: inferredType,
+                state: (candidate.state?.toLowerCase() || inferStateFromRaceName(candidate.race_name))
               })
               .select('id')
               .single()
@@ -401,6 +402,17 @@ async function syncCandidates(supabase: any, config: AppConfig): Promise<SyncRes
               continue
             }
             raceId = newRace.id
+          }
+
+          // Ensure race has state populated
+          if (raceId && (!race?.state || race?.state === '')) {
+            const normalizedState = (candidate.state?.toLowerCase() || inferStateFromRaceName(candidate.race_name));
+            if (normalizedState) {
+              await supabase
+                .from('races')
+                .update({ state: normalizedState })
+                .eq('id', raceId)
+            }
           }
 
           const { error } = await supabase
@@ -704,6 +716,17 @@ function inferRaceType(raceName: string): string {
   if (name.includes('house of representatives') || name.includes('representatives')) return 'house_of_representatives'
   if (name.includes('state assembly') || name.includes('house of assembly')) return 'state_assembly'
   return 'presidential'
+}
+
+function inferStateFromRaceName(raceName: string): string | null {
+  const text = raceName.toLowerCase()
+  const states = [
+    'abia','adamawa','akwa ibom','anambra','bauchi','bayelsa','benue','borno','cross river','delta','ebonyi','edo','ekiti','enugu','fct','gombe','imo','jigawa','kaduna','kano','katsina','kebbi','kogi','kwara','lagos','nasarawa','niger','ogun','ondo','osun','oyo','plateau','rivers','sokoto','taraba','yobe','zamfara'
+  ]
+  for (const st of states) {
+    if (text.includes(st)) return st
+  }
+  return null
 }
 
 function generateChecksum(data: any): string {
