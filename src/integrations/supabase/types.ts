@@ -475,7 +475,12 @@ export type Database = {
         | "state_assembly"
         | "local_government"
         | "councilor"
-      provider_name: "inec_api" | "manual_import" | "civic_feeds" | "fact_check"
+      provider_name:
+        | "inec_api"
+        | "manual_import"
+        | "civic_feeds"
+        | "fact_check"
+        | "inec_native"
       result_status: "pending" | "collated" | "disputed" | "final"
       sync_status: "pending" | "running" | "completed" | "failed"
     }
@@ -622,7 +627,13 @@ export const Constants = {
         "local_government",
         "councilor",
       ],
-      provider_name: ["inec_api", "manual_import", "civic_feeds", "fact_check"],
+      provider_name: [
+        "inec_api",
+        "manual_import",
+        "civic_feeds",
+        "fact_check",
+        "inec_native",
+      ],
       result_status: ["pending", "collated", "disputed", "final"],
       sync_status: ["pending", "running", "completed", "failed"],
     },
