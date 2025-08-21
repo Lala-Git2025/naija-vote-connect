@@ -18,52 +18,86 @@ export type Database = {
         Row: {
           age: number | null
           avatar_url: string | null
+          bio_source: string | null
+          constituency: string | null
           created_at: string | null
           education: string | null
+          election_date: string | null
           experience: string | null
+          external_id_inec: string | null
           id: string
           inec_candidate_id: string | null
           manifesto: string | null
           name: string
+          normalized_name: string | null
           occupation: string | null
+          office: string | null
           party: string
+          party_code: string | null
+          pending_verification: boolean | null
           race_id: string | null
+          state: string | null
           status: Database["public"]["Enums"]["candidate_status"]
           updated_at: string | null
         }
         Insert: {
           age?: number | null
           avatar_url?: string | null
+          bio_source?: string | null
+          constituency?: string | null
           created_at?: string | null
           education?: string | null
+          election_date?: string | null
           experience?: string | null
+          external_id_inec?: string | null
           id?: string
           inec_candidate_id?: string | null
           manifesto?: string | null
           name: string
+          normalized_name?: string | null
           occupation?: string | null
+          office?: string | null
           party: string
+          party_code?: string | null
+          pending_verification?: boolean | null
           race_id?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["candidate_status"]
           updated_at?: string | null
         }
         Update: {
           age?: number | null
           avatar_url?: string | null
+          bio_source?: string | null
+          constituency?: string | null
           created_at?: string | null
           education?: string | null
+          election_date?: string | null
           experience?: string | null
+          external_id_inec?: string | null
           id?: string
           inec_candidate_id?: string | null
           manifesto?: string | null
           name?: string
+          normalized_name?: string | null
           occupation?: string | null
+          office?: string | null
           party?: string
+          party_code?: string | null
+          pending_verification?: boolean | null
           race_id?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["candidate_status"]
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "candidates_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
+          },
           {
             foreignKeyName: "candidates_race_id_fkey"
             columns: ["race_id"]
@@ -162,8 +196,10 @@ export type Database = {
           explanation: string | null
           id: string
           published_at: string | null
+          rating: string | null
           source_name: string
           source_url: string | null
+          subjects: Json | null
           topic: string | null
           updated_at: string | null
           verdict: string
@@ -176,8 +212,10 @@ export type Database = {
           explanation?: string | null
           id?: string
           published_at?: string | null
+          rating?: string | null
           source_name: string
           source_url?: string | null
+          subjects?: Json | null
           topic?: string | null
           updated_at?: string | null
           verdict: string
@@ -190,8 +228,10 @@ export type Database = {
           explanation?: string | null
           id?: string
           published_at?: string | null
+          rating?: string | null
           source_name?: string
           source_url?: string | null
+          subjects?: Json | null
           topic?: string | null
           updated_at?: string | null
           verdict?: string
@@ -203,6 +243,69 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "candidates"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      manifestos: {
+        Row: {
+          candidate_id: string | null
+          checksum: string | null
+          created_at: string
+          embedding: string | null
+          id: string
+          party_code: string | null
+          published_at: string | null
+          raw_text: string | null
+          sections: Json | null
+          source: string
+          source_url: string | null
+          updated_at: string
+          version_label: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          checksum?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          party_code?: string | null
+          published_at?: string | null
+          raw_text?: string | null
+          sections?: Json | null
+          source: string
+          source_url?: string | null
+          updated_at?: string
+          version_label?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          checksum?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          party_code?: string | null
+          published_at?: string | null
+          raw_text?: string | null
+          sections?: Json | null
+          source?: string
+          source_url?: string | null
+          updated_at?: string
+          version_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manifestos_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manifestos_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -248,6 +351,36 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      parties: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -457,7 +590,102 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
+      }
+      normalize_candidate_name: {
+        Args: { full_name: string }
+        Returns: string
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
       candidate_status: "active" | "withdrawn" | "disqualified" | "deceased"
