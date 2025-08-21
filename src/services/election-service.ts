@@ -35,3 +35,7 @@ export function initializeDataProviders() {
 
 // Call initialization
 initializeDataProviders();
+
+// Start automated sync service
+console.log('Starting automated sync service...');
+syncService.start();
