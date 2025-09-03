@@ -88,12 +88,10 @@ const Auth = () => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
       {/* Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src="/lovable-uploads/2d08962c-20d4-4728-bc6e-1d68d126919b.png"
-          alt="Nigerian voters engaged in democratic process"
-          className="w-full h-full object-cover"
-        />
+      <div
+        className="absolute inset-0 bg-center bg-cover"
+        style={{ backgroundImage: "url('/lovable-uploads/2d08962c-20d4-4728-bc6e-1d68d126919b.png')" }}
+      >
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
