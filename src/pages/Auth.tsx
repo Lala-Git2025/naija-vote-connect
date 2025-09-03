@@ -91,7 +91,7 @@ const Auth = () => {
       <div className="absolute inset-0 bg-center bg-cover bg-no-repeat"
         style={{ backgroundImage: "url('/lovable-uploads/bf05653f-e466-4977-84d3-712c79618275.png')" }}
       >
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-black/60" />
       </div>
 
       {/* Main Content */}
@@ -99,7 +99,7 @@ const Auth = () => {
         {/* Logo and Branding */}
         <div className="mb-8">
           <div className="flex items-center justify-center mb-4">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-wide">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-lg">
               Civic
             </h1>
             <div className="mx-4 w-16 h-16 md:w-20 md:h-20 relative">
@@ -108,36 +108,36 @@ const Auth = () => {
                 <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-teal-500 to-green-500 rounded-full"></div>
               </div>
             </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-wide">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-wide drop-shadow-lg">
               Lens
             </h1>
           </div>
           
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground mb-2">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-2 drop-shadow-lg">
             See Your Candidates Clearly
           </h2>
           
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-0.5 bg-border"></div>
-            <span className="mx-4 text-muted-foreground text-sm md:text-base tracking-widest uppercase">
+            <div className="w-16 h-0.5 bg-white/40"></div>
+            <span className="mx-4 text-white/90 text-sm md:text-base tracking-widest uppercase drop-shadow">
               Democracy in Focus
             </span>
-            <div className="w-16 h-0.5 bg-border"></div>
+            <div className="w-16 h-0.5 bg-white/40"></div>
           </div>
         </div>
 
         {/* Main Content Box */}
         <div className="max-w-2xl mx-auto mb-8">
           <div 
-            className="p-6 md:p-8 rounded-2xl bg-card/80 border border-border shadow-sm"
+            className="p-6 md:p-8 rounded-2xl bg-black/50 backdrop-blur-sm border border-white/20 shadow-lg"
           >
-            <p className="text-lg md:text-xl text-foreground leading-relaxed">
+            <p className="text-lg md:text-xl text-white leading-relaxed">
               Empowering Nigerian voters through informed choices.
               <br />
               Your trusted political compass in the complex landscape of elections.
             </p>
           </div>
-          </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -160,7 +160,7 @@ const Auth = () => {
         </div>
 
         {/* Security Indicators */}
-        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+        <div className="flex items-center gap-6 text-sm text-white/90">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
             <span>Secure</span>
