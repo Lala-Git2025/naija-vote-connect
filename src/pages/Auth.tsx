@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import FaceAwareHero from "@/components/FaceAwareHero";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -94,9 +93,6 @@ const Auth = () => {
           src="/lovable-uploads/2d08962c-20d4-4728-bc6e-1d68d126919b.png"
           alt="Nigerian voters engaged in democratic process"
           className="w-full h-full object-cover"
-          style={{
-            transform: 'scale(0.85)',
-          }}
         />
         <div className="absolute inset-0 bg-black/40" />
       </div>
