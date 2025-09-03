@@ -151,7 +151,6 @@ const Auth = () => {
           
           <Button
             size="lg"
-            variant="outline"
             onClick={() => setShowSignIn(!showSignIn)}
             className="text-lg px-8 py-4 rounded-full min-w-[160px]"
           >
