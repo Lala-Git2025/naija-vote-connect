@@ -86,8 +86,9 @@ const FaceAwareHero = ({
         <img
           src={imageSrc}
           alt="Hero background"
-          className="w-full h-full object-contain object-center"
+          className="w-full h-full object-cover"
           style={{
+            objectPosition: 'center center', // You can adjust this - try 'center top', 'center bottom', '30% 50%', etc.
             backgroundBlendMode: 'normal',
             mixBlendMode: 'normal',
             filter: 'none'
