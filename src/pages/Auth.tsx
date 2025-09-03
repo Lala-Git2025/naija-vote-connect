@@ -87,10 +87,15 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">
-      {/* Background removed per request - using clean theme background */}
+      {/* Background Image (single layer) */}
+      <div className="absolute inset-0 bg-center bg-cover bg-no-repeat"
+        style={{ backgroundImage: "url('/lovable-uploads/bf05653f-e466-4977-84d3-712c79618275.png')" }}
+      >
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center text-primary-foreground">
         {/* Logo and Branding */}
         <div className="mb-8">
           <div className="flex items-center justify-center mb-4">
