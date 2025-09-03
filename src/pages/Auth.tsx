@@ -86,21 +86,15 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-black">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-center bg-cover bg-no-repeat"
-        style={{ backgroundImage: "url('/lovable-uploads/2d08962c-20d4-4728-bc6e-1d68d126919b.png')" }}
-      >
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
+    <div className="min-h-screen relative overflow-hidden bg-background">
+      {/* Background removed per request - using clean theme background */}
 
       {/* Main Content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center">
         {/* Logo and Branding */}
         <div className="mb-8">
           <div className="flex items-center justify-center mb-4">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-wide">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-wide">
               Civic
             </h1>
             <div className="mx-4 w-16 h-16 md:w-20 md:h-20 relative">
@@ -109,46 +103,43 @@ const Auth = () => {
                 <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-teal-500 to-green-500 rounded-full"></div>
               </div>
             </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-wide">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-wide">
               Lens
             </h1>
           </div>
           
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-2">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground mb-2">
             See Your Candidates Clearly
           </h2>
           
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-0.5 bg-gray-400"></div>
-            <span className="mx-4 text-gray-300 text-sm md:text-base tracking-widest uppercase">
+            <div className="w-16 h-0.5 bg-border"></div>
+            <span className="mx-4 text-muted-foreground text-sm md:text-base tracking-widest uppercase">
               Democracy in Focus
             </span>
-            <div className="w-16 h-0.5 bg-gray-400"></div>
+            <div className="w-16 h-0.5 bg-border"></div>
           </div>
         </div>
 
         {/* Main Content Box */}
         <div className="max-w-2xl mx-auto mb-8">
           <div 
-            className="p-6 md:p-8 rounded-2xl backdrop-blur-sm border border-white/20"
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-            }}
+            className="p-6 md:p-8 rounded-2xl bg-card/80 border border-border shadow-sm"
           >
-            <p className="text-lg md:text-xl text-white leading-relaxed">
+            <p className="text-lg md:text-xl text-foreground leading-relaxed">
               Empowering Nigerian voters through informed choices.
               <br />
               Your trusted political compass in the complex landscape of elections.
             </p>
           </div>
-        </div>
+          </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <Button
             size="lg"
             onClick={() => navigate("/onboarding")}
-            className="bg-white text-black hover:bg-gray-100 text-lg px-8 py-4 rounded-full min-w-[160px]"
+            className="text-lg px-8 py-4 rounded-full min-w-[160px]"
           >
             Get Started
           </Button>
@@ -157,14 +148,14 @@ const Auth = () => {
             size="lg"
             variant="outline"
             onClick={() => setShowSignIn(!showSignIn)}
-            className="border-white text-white hover:bg-white hover:text-black text-lg px-8 py-4 rounded-full min-w-[160px]"
+            className="text-lg px-8 py-4 rounded-full min-w-[160px]"
           >
             Sign In
           </Button>
         </div>
 
         {/* Security Indicators */}
-        <div className="flex items-center gap-6 text-sm text-gray-300">
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
             <span>Secure</span>
