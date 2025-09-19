@@ -20,11 +20,14 @@ const Index = () => {
     }
 
     // Check if user has completed onboarding
-    if (user) {
+    if (user && !loading) {
       const onboardingStatus = localStorage.getItem('civicLensOnboarded');
+      console.log('Onboarding status check:', onboardingStatus);
       if (!onboardingStatus) {
+        console.log('No onboarding status, redirecting to /onboarding');
         navigate('/onboarding');
       } else {
+        console.log('User has onboarded, setting hasOnboarded to true');
         setHasOnboarded(true);
       }
     }
