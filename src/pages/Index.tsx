@@ -13,8 +13,11 @@ const Index = () => {
   const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
+    console.log('Index useEffect triggered:', { user: !!user, loading, hasOnboarded });
+    
     // Redirect to auth if not logged in
     if (!loading && !user) {
+      console.log('Not authenticated, redirecting to /auth');
       navigate('/auth');
       return;
     }
@@ -23,8 +26,11 @@ const Index = () => {
     if (user && !loading) {
       const onboardingStatus = localStorage.getItem('civicLensOnboarded');
       console.log('Onboarding status check:', onboardingStatus);
+      console.log('Current hasOnboarded state:', hasOnboarded);
+      
       if (!onboardingStatus) {
         console.log('No onboarding status, redirecting to /onboarding');
+        setHasOnboarded(false);
         navigate('/onboarding');
       } else {
         console.log('User has onboarded, setting hasOnboarded to true');
@@ -32,6 +38,24 @@ const Index = () => {
       }
     }
   }, [navigate, user, loading]);
+
+  // Additional useEffect to check localStorage changes
+  useEffect(() => {
+    const checkOnboardingStatus = () => {
+      const status = localStorage.getItem('civicLensOnboarded');
+      console.log('Checking onboarding status on mount/change:', status);
+      if (status && user && !loading) {
+        console.log('Setting hasOnboarded to true from storage check');
+        setHasOnboarded(true);
+      }
+    };
+
+    checkOnboardingStatus();
+    
+    // Listen for storage changes
+    window.addEventListener('storage', checkOnboardingStatus);
+    return () => window.removeEventListener('storage', checkOnboardingStatus);
+  }, [user, loading]);
 
   // Show loading state while checking auth and onboarding status
   if (loading || (!user && hasOnboarded === null)) {
@@ -52,6 +76,8 @@ const Index = () => {
     return null;
   }
 
+  console.log('Rendering Index with hasOnboarded:', hasOnboarded);
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />

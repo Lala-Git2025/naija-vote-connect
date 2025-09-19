@@ -46,8 +46,11 @@ const Onboarding = () => {
       setCurrentStep(currentStep + 1);
     } else {
       // Complete onboarding
+      console.log('Completing onboarding, setting localStorage items');
       localStorage.setItem('civicLensOnboarded', 'true');
       localStorage.setItem('userPreferences', JSON.stringify(formData));
+      console.log('Onboarding completed, navigating to home');
+      console.log('localStorage civicLensOnboarded:', localStorage.getItem('civicLensOnboarded'));
       navigate('/');
     }
   };
